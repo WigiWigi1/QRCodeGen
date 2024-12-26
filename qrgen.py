@@ -1,11 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import qrcode
 import base64
 from io import BytesIO
-from flask_cors import CORS
+import os
 
 app = Flask(__name__)
-CORS(app)  # Allow cross-origin requests
+
+
+@app.route('/')
+def home():
+    return render_template('index.html')  # Render the main frontend page
 
 
 @app.route('/generate_qr', methods=['GET'])
@@ -34,4 +38,4 @@ def generate_qr():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
