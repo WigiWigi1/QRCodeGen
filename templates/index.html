@@ -1,144 +1,236 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        .form-control {
-            margin: 15px 0;
-        }
-        .btn-primary {
-            background-color: #28a745;
-            border: none;
-            color: white;
-            font-weight: bold;
-            padding: 10px 20px;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-        .btn-primary:hover {
-            background-color: #218838;
-        }
-        .btn-primary:focus {
-            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.5);
-        }
-        #qr-container {
-            margin-top: 20px;
-            text-align: center;
-        }
-        #qr-code {
-            margin: 15px auto;
-            display: block;
-            max-width: 100%;
-            height: auto;
-        }
-        .copy-btn {
-            margin-top: 15px;
-            display: block;
-            width: 100%; /* Ensure the button is centered below the QR code */
-            max-width: 200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        #copy-message {
-            margin-top: 10px;
-            color: green;
-            font-size: 1rem;
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>QR Code Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root { --card-narrow: 560px; --card-wide: 980px; }
+    body { font-family:'Poppins',sans-serif; background:#f3f6fa; color:#333; display:flex; flex-direction:column; align-items:center; padding:1rem; }
+    .card { background:#fff; padding:1.5rem; border-radius:12px; box-shadow:0 4px 8px rgba(0,0,0,.1); width:100%; max-width:var(--card-narrow); transition:max-width .25s ease; }
+    .card.wide { max-width:var(--card-wide); }
+
+    /* Сетка: по умолчанию 1 колонка; после генерации — 2 */
+    .columns { display:grid; grid-template-columns: 1fr; gap:1.25rem; align-items:start; }
+    @media (min-width: 980px) {
+      .columns.twocols { grid-template-columns: 1.1fr 0.9fr; }
+    }
+
+    /* Левая колонка (форма) */
+    .generator h2 { margin: 0 0 .75rem 0; text-align:center; }
+    input, button { box-sizing:border-box; padding:.7rem; margin:.5rem 0; border-radius:6px; border:1px solid #ccc; width:100%; font-family:inherit; font-size:1rem; }
+    button { background:#3b82f6; color:#fff; border:none; cursor:pointer; transition:background .2s ease; }
+    button:hover { background:#2563eb; }
+    .size { display:flex; gap:.75rem; justify-content:center; margin:.5rem 0 1rem; font-size:.95rem; flex-wrap:wrap; }
+    .size label { display:flex; align-items:center; gap:.35rem; }
+
+    .palette { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin:1rem 0; }
+    .swatch { display:flex; flex-direction:column; align-items:center; font-size:.75rem; color:#555; text-align:center; }
+    .swatch button { width:60px; height:40px; border:none; border-radius:6px; cursor:pointer; margin-bottom:.3rem; }
+
+    .error { display:none; color:#dc2626; font-size:.85rem; margin-top:.25rem; text-align:left; }
+
+    /* Правая колонка (превью) — скрыта до генерации */
+    .preview {
+      display: none;
+      position: sticky;
+      top: 1rem;
+      flex-direction: column;
+      align-items: center;
+    }
+    .qr-box {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height: 320px;
+      border:1px dashed #e5e7eb;
+      border-radius:10px;
+      background:#fafbff;
+      padding:1rem;
+      margin-bottom:1rem;
+      width:100%;
+    }
+    .qr-box img { max-width:100%; height:auto; }
+
+    .downloads { display:none; margin-top:.5rem; display:flex; gap:.5rem; width:100%; justify-content:center; }
+    .downloads a { flex:1; text-decoration:none; text-align:center; background:#10b981; color:#fff; padding:.7rem; border-radius:6px; transition:background .2s ease; max-width:140px; }
+    .downloads a:hover { background:#059669; }
+
+    /* Мобилка */
+    @media (max-width: 600px) {
+      .palette { grid-template-columns:repeat(2,1fr); gap:.6rem; }
+      .swatch button { width:100%; height:45px; }
+      input, button { font-size:1.1rem; padding:.9rem; }
+      .downloads { flex-direction:column; gap:.7rem; }
+      .downloads a { max-width:100%; font-size:1.05rem; padding:1rem; }
+      .preview { position: static; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>QR Code Generator</h1>
-        <form id="qr-form">
-            <input
-                type="text"
-                id="link-input"
-                class="form-control"
-                placeholder="Enter the link to generate a QR code"
-                required
-            />
-            <button type="submit" class="btn btn-primary">Generate QR Code</button>
-        </form>
-        <div id="qr-container" style="display: none;">
-            <h3>Your QR Code</h3>
-            <img id="qr-code" src="" alt="QR Code">
-            <button id="copy-btn" class="btn btn-secondary copy-btn">Copy QR Code</button>
-            <div id="copy-message">Copied!</div>
+  <div class="card" id="card">
+    <div class="columns" id="cols">
+      <!-- Левая колонка -->
+      <div class="generator">
+        <h2>QR Code Generator</h2>
+        <input id="link" type="text" placeholder="Enter link (we'll add https:// if missing)">
+        <div id="err" class="error">Please enter a link</div>
+
+        <div class="size">
+          <label><input type="radio" name="sz" value="sm"> Small</label>
+          <label><input type="radio" name="sz" value="md" checked> Medium</label>
+          <label><input type="radio" name="sz" value="lg"> Large</label>
         </div>
+
+        <h4 style="text-align:center;margin:.5rem 0 0;">Pick a color scheme:</h4>
+        <div class="palette">
+          <div class="swatch"><button style="background:linear-gradient(45deg,#000000 50%,#ffffff 50%)" onclick="setColors('#000000','#ffffff')"></button>Classic B/W</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#6a0d2d 50%,#fde2e4 50%)" onclick="setColors('#6a0d2d','#fde2e4')"></button>Burgundy / Blush</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#2f5d62 50%,#e2f0cb 50%)" onclick="setColors('#2f5d62','#e2f0cb')"></button>Teal / Mint</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#023e8a 50%,#bee1e6 50%)" onclick="setColors('#023e8a','#bee1e6')"></button>Navy / Powder</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#7c4700 50%,#fff1c1 50%)" onclick="setColors('#7c4700','#fff1c1')"></button>Brown / Cream</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#0f4c5c 50%,#e0fbfc 50%)" onclick="setColors('#0f4c5c','#e0fbfc')"></button>Deep Teal / Ice</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#9b2226 50%,#fefae0 50%)" onclick="setColors('#9b2226','#fefae0')"></button>Red / Cream</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#283618 50%,#dda15e 50%)" onclick="setColors('#283618','#dda15e')"></button>Olive / Sand</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#14213d 50%,#fca311 50%)" onclick="setColors('#14213d','#fca311')"></button>Navy / Amber</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#1b4332 50%,#d8f3dc 50%)" onclick="setColors('#1b4332','#d8f3dc')"></button>Forest / Mint</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#5f0f40 50%,#e0aaff 50%)" onclick="setColors('#5f0f40','#e0aaff')"></button>Purple / Lavender</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#2d00f7 50%,#cdb4db 50%)" onclick="setColors('#2d00f7','#cdb4db')"></button>Indigo / Lilac</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#780000 50%,#ffddd2 50%)" onclick="setColors('#780000','#ffddd2')"></button>Dark Red / Peach</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#006d77 50%,#edf6f9 50%)" onclick="setColors('#006d77','#edf6f9')"></button>Teal / Soft Blue</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#1a759f 50%,#caf0f8 50%)" onclick="setColors('#1a759f','#caf0f8')"></button>Blue / Aqua</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#582f0e 50%,#ffe5b4 50%)" onclick="setColors('#582f0e','#ffe5b4')"></button>Coffee / Beige</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#5a189a 50%,#e0aaff 50%)" onclick="setColors('#5a189a','#e0aaff')"></button>Violet / Lavender</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#264653 50%,#e9c46a 50%)" onclick="setColors('#264653','#e9c46a')"></button>Blue Gray / Yellow</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#2a9d8f 50%,#f0efeb 50%)" onclick="setColors('#2a9d8f','#f0efeb')"></button>Seafoam / Linen</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#9d0208 50%,#ffb4a2 50%)" onclick="setColors('#9d0208','#ffb4a2')"></button>Crimson / Coral</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#386641 50%,#f2e8cf 50%)" onclick="setColors('#386641','#f2e8cf')"></button>Moss / Cream</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#03045e 50%,#ade8f4 50%)" onclick="setColors('#03045e','#ade8f4')"></button>Deep Blue / Sky</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#6d597a 50%,#f6e9ff 50%)" onclick="setColors('#6d597a','#f6e9ff')"></button>Plum / Lilac</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#432818 50%,#ffedd8 50%)" onclick="setColors('#432818','#ffedd8')"></button>Brown / Apricot</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#0b090a 50%,#e9ecef 50%)" onclick="setColors('#0b090a','#e9ecef')"></button>Black / Soft Gray</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#6c757d 50%,#f8f9fa 50%)" onclick="setColors('#6c757d','#f8f9fa')"></button>Gray / Off-White</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#2d6a4f 50%,#d8f3dc 50%)" onclick="setColors('#2d6a4f','#d8f3dc')"></button>Emerald / Pale Green</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#1d4ed8 50%,#dbeafe 50%)" onclick="setColors('#1d4ed8','#dbeafe')"></button>Royal Blue / Soft Sky</div>
+        </div>
+
+        <button id="genBtn" onclick="onGenerateClick()">Generate</button>
+      </div>
+
+      <!-- Правая колонка (скрыта до генерации) -->
+      <div class="preview" id="preview">
+        <div class="qr-box" id="result"></div>
+        <div id="downloads" class="downloads">
+          <a id="dl-png" href="#" download>PNG</a>
+          <a id="dl-pdf" href="#" download>PDF</a>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        const qrForm = document.getElementById("qr-form");
-        const qrContainer = document.getElementById("qr-container");
-        const qrCodeImg = document.getElementById("qr-code");
-        const linkInput = document.getElementById("link-input");
-        const copyBtn = document.getElementById("copy-btn");
-        const copyMessage = document.getElementById("copy-message");
+  <script>
+    let selectedFill = "#000000";
+    let selectedBack = "#ffffff";
+    let typingTimer = null;
+    let hasGenerated = false; // после первого успешного рендера — true
 
-        // Handle QR Code Generation
-        qrForm.addEventListener("submit", async (e) => {
-            e.preventDefault(); // Prevent form submission
-            const link = linkInput.value.trim();
+    function setColors(fill, back) {
+      selectedFill = fill;
+      selectedBack = back;
+      // автообновление только если уже был первый рендер
+      if (hasGenerated && document.getElementById('link').value.trim()) {
+        generateQR();
+      }
+    }
 
-            if (!link) {
-                alert("Please enter a valid link.");
-                return;
-            }
+    function getSize() {
+      const el = document.querySelector('input[name="sz"]:checked');
+      return el ? el.value : 'md';
+    }
 
-            try {
-                // Send request to the backend to generate QR code
-                <!--const response = await fetch(`/generate_qr?link=${encodeURIComponent(link)}`);-->
-                const response = await fetch('https://qrcodegen-1.onrender.com/generate_qr?link=' + encodeURIComponent(input));
-                const data = await response.json();
+    function withProto(url) {
+      const v = (url || '').trim();
+      if (!v) return '';
+      const low = v.toLowerCase();
+      if (low.startsWith('http://') || low.startsWith('https://')) return v;
+      return 'https://' + v;
+    }
 
-                if (data.qr_code) {
-                    qrCodeImg.src = `data:image/png;base64,${data.qr_code}`;
-                    qrContainer.style.display = "block"; // Show QR code container
-                } else {
-                    alert("Failed to generate QR code. Please try again.");
-                }
-            } catch (error) {
-                alert("An error occurred while generating the QR code. Please try again.");
-            }
-        });
+    function showError(msg) {
+      const e = document.getElementById('err');
+      e.textContent = msg || 'Please enter a link';
+      e.style.display = 'block';
+    }
+    function clearError() {
+      document.getElementById('err').style.display = 'none';
+    }
 
-        // Handle Copy QR Code to Clipboard
-        copyBtn.addEventListener("click", async () => {
-            try {
-                const response = await fetch(qrCodeImg.src); // Fetch the QR code image data
-                const blob = await response.blob(); // Convert it to a Blob object
+    async function onGenerateClick() {
+      const raw = document.getElementById('link').value.trim();
+      if (!raw) {
+        showError('Please enter a link');
+        return; // не генерим пустое
+      }
+      clearError();
 
-                await navigator.clipboard.write([
-                    new ClipboardItem({
-                        "image/png": blob,
-                    }),
-                ]);
+      // первый успешный рендер — расширяем карточку и показываем превью-колонку
+      if (!hasGenerated) {
+        document.getElementById('card').classList.add('wide');
+        document.getElementById('cols').classList.add('twocols');
+      }
 
-                // Show "Copied" message
-                copyMessage.style.display = "block";
-                setTimeout(() => {
-                    copyMessage.style.display = "none";
-                }, 2000); // Hide the message after 2 seconds
-            } catch (error) {
-                alert("Failed to copy QR Code to clipboard. Please try again.");
-            }
-        });
-    </script>
+      await generateQR();
+      hasGenerated = true;
+      document.getElementById('preview').style.display = 'flex';
+    }
+
+    async function generateQR() {
+      const raw = document.getElementById('link').value.trim();
+      const result = document.getElementById('result');
+      const downloads = document.getElementById('downloads');
+
+      if (!raw) {
+        // если вдруг очистили поле — скрываем превью (но не ломаем раскладку)
+        result.innerHTML = '';
+        downloads.style.display = 'none';
+        return;
+      }
+
+      const link = withProto(raw);
+      const size = getSize();
+
+      const res = await fetch('/generate_qr', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ link, fill_color: selectedFill, back_color: selectedBack, size })
+      });
+
+      const data = await res.json();
+      if (data.qr_code && data.id) {
+        result.innerHTML = `<img src="data:image/png;base64,${data.qr_code}" alt="QR Code">`;
+        document.getElementById('dl-png').href = `/download_png?id=${data.id}`;
+        document.getElementById('dl-pdf').href = `/download_pdf?id=${data.id}`;
+        downloads.style.display = 'flex';
+      } else {
+        downloads.style.display = 'none';
+        result.innerHTML = `<p style="color:red">${data.error || 'Error'}</p>`;
+      }
+    }
+
+    // Ввод: убираем ошибку и, если уже был рендер, делаем превью с дебаунсом
+    document.getElementById('link').addEventListener('input', () => {
+      clearError();
+      if (!hasGenerated) return;
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(generateQR, 500);
+    });
+    // Переключение размера: автопревью только после первого рендера
+    document.querySelectorAll('input[name="sz"]').forEach(r => {
+      r.addEventListener('change', () => {
+        if (hasGenerated && document.getElementById('link').value.trim()) generateQR();
+      });
+    });
+  </script>
 </body>
 </html>
