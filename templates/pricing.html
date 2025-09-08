@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pricing – ColorQR</title>
+  <meta name="description" content="Pricing for ColorQR: Free forever QR codes, one-time unlock, and Pro plans for individuals and businesses. High-resolution and custom colors coming soon.">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    .badge {
+      display: inline;
+      white-space: nowrap;
+      background: #e0e7ff;
+      color: #1e40af;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      margin-left: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+  <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+  <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+  <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+</nav>
+
+
+
+  <div class="card">
+    <h1>Pricing</h1>
+    <ul>
+      <li><b>Free</b> — Forever-valid QR codes, PNG export, essential color themes.</li>
+      <li><b>One-time Unlock</b><span class="badge">Coming soon</span> — Extra themes and high-quality exports (SVG/PDF).</li>
+      <li><b>Pro</b><span class="badge">Coming soon</span> — Unlimited features, high-resolution exports,
+          custom color palettes, no watermarks.</li>
+      <li><b>Pro Business</b><span class="badge">Coming soon</span> — Dynamic QR, analytics, team access, advanced branding options.</li>
+    </ul>
+    <p>Start free, upgrade anytime.</p>
+  </div>
+
+  <div class="card">
+        <span class="badge">Coming soon</span>
+    <h2>Upcoming Features</h2>
+    <ul>
+      <li>High-resolution QR code exports for professional printing</li>
+      <li>Custom color palettes for complete branding flexibility</li>
+      <li>More professional templates and design presets</li>
+      <li>Advanced features for business accounts: analytics, dynamic QR, branding</li>
+    </ul>
+    <p><i>Stay tuned</i></p>
+  </div>
+</body>
+</html>

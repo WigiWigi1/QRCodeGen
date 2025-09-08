@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Contact - Color QR Generator</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+
+</head>
+<body>
+<nav>
+  <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+  <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+  <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+  <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+</nav>
+
+
+  <div class="card" id="card">
+      <h1>Contact Us</h1>
+      <p>Email: <a href="mailto:hello@colorqr.app">hello@colorqr.app</a></p>
+  </div>
+</body>
+</html>
