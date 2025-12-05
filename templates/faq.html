@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ — ColorQR</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <a href="/" class="logo-link">ColorQR</a>
+      {% if is_pro %}<span class="badge badge-pro">Pro</span>{% elif is_one_time %}<span class="badge badge-ot">One-Time</span>{% endif %}
+    </div>
+    <div class="user-box">
+      {% if user %}{% if user.picture %}<img src="{{ user.picture }}" alt="a">{% endif %}<span class="user-email">{{ user.email }}</span><a class="logout-btn" href="/logout">Logout</a>{% else %}<a class="login-btn" href="/login">Login with Google</a>{% endif %}
+    </div>
+  </div>
+
+<nav>
+  <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+  <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+  <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+  <a href="/faq"     class="{{ 'active' if active=='faq'     else '' }}">FAQ</a>
+  <a href="/blog"    class="{{ 'active' if active=='blog'    else '' }}">Blog</a>
+  <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+</nav>
+
+  <div class="card">
+    <h2 style="text-align:center;margin:.2rem 0 1rem">Frequently Asked Questions</h2>
+    <div class="faq">
+      {% for item in faqs %}
+      <details>
+        <summary>{{ item.q }}</summary>
+        <div class="answer">{{ item.a }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+
+  <style>
+  .faq details { border:1px solid #e5e7eb; border-radius:10px; padding:.7rem 1rem; margin:.6rem 0; background:#fff; }
+  .faq summary { cursor:pointer; font-weight:500; color:#111827; outline:none; }
+  .faq .answer { color:#4b5563; margin-top:.4rem; }
+  </style>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — ColorQR</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <a href="/" class="logo-link">ColorQR</a>
+      {% if is_pro %}
+        <span class="badge badge-pro">Pro</span>
+      {% elif is_one_time %}
+        <span class="badge badge-ot">One-Time</span>
+      {% endif %}
+    </div>
+    <div class="user-box">
+      {% if user %}{% if user.picture %}<img src="{{ user.picture }}" alt="a">{% endif %}<span class="user-email">{{ user.email }}</span><a class="logout-btn" href="/logout">Logout</a>{% else %}<a class="login-btn" href="/login">Login with Google</a>{% endif %}
+    </div>
+  </div>
+
+<nav>
+  <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+  <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+  <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+  <a href="/faq"     class="{{ 'active' if active=='faq'     else '' }}">FAQ</a>
+  <a href="/blog"    class="{{ 'active' if active=='blog'    else '' }}">Blog</a>
+  <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+</nav>
+
+  <div class="card">
+    <h2 style="text-align:center;margin:.2rem 0 1rem">Simple pricing</h2>
+
+    <div style="display:grid;gap:1rem;grid-template-columns:repeat(3,1fr);">
+      <div class="plan" style="border:1px solid #e5e7eb;border-radius:12px;padding:1rem;">
+        <h3>Free</h3>
+        <div style="font-size:1.6rem;font-weight:600;margin:.3rem 0 1rem;">€0</div>
+        <ul style="padding-left:1rem;line-height:1.7;">
+          <li>Types: URL, Wi-Fi, Text</li>
+          <li>Export: JPG</li>
+          <li>Palettes: 4 basic</li>
+          <li>Watermark on preview & download</li>
+          <li>Sizes: Small (256), Medium (512)</li>
+        </ul>
+      </div>
+
+      <div class="plan" style="border:2px solid #bfdbfe;border-radius:12px;padding:1rem;background:#f8fbff;">
+        <h3>One-Time Access</h3>
+        <div style="font-size:1.6rem;font-weight:600;margin:.3rem 0 1rem;">€1.99</div>
+        <ul style="padding-left:1rem;line-height:1.7;">
+          <li>Everything in Free</li>
+          <li>HQ JPG export</li>
+          <li>+16 palettes, custom color</li>
+          <li>Sizes: +Large (1024)</li>
+          <li><em>No vCard</em></li>
+          <li><em>No Dynamic QR</em></li>
+          <li><em>No SVG</em></li>
+        </ul>
+      </div>
+
+      <div class="plan" style="border:2px solid #86efac;border-radius:12px;padding:1rem;background:#f6fff8;">
+        <h3>Pro</h3>
+        <div style="font-size:1.6rem;font-weight:600;margin:.3rem 0 1rem;">€9.99/mo</div>
+        <ul style="padding-left:1rem;line-height:1.7;">
+          <li>Everything in Free</li>
+          <li>vCard with center icon (custom PNG)</li>
+          <li>Dynamic QR (editable)</li>
+          <li>Export: JPG + <strong>SVG</strong></li>
+          <li>+16 palettes, custom color</li>
+          <li>Sizes: +Large (1024)</li>
+          <li>No watermark</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <style>
+  @media (max-width: 800px){
+    .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr; }
+  }
+  </style>
+</body>
+</html>

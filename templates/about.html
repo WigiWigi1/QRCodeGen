@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>About - Color QR Generator</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="header">
+  <div class="logo">
+    <a href="/" style="font-weight:600;font-size:1.2rem;color:#333;text-decoration:none;">ColorQR</a>
+  </div>
+  <div class="user-box">
+    {% if user %}
+      {% if user.picture %}<img src="{{ user.picture }}" alt="avatar">{% endif %}
+      <span>{{ user.email }}</span>
+      {% if is_premium %}<span class="badge-pro">Pro</span>{% endif %}
+      <a class="logout-btn" href="/logout">Logout</a>
+    {% else %}
+      <a class="login-btn" href="/login">Login with Google</a>
+    {% endif %}
+  </div>
+</div>
+
+<nav>
+  <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+  <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+  <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+  <a href="/faq"     class="{{ 'active' if active=='faq'     else '' }}">FAQ</a>
+  <a href="/blog"    class="{{ 'active' if active=='blog'    else '' }}">Blog</a>
+  <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+</nav>
+
+
+
+
+  <div class="card" id="card">
+      <h1>About Color QR Generator</h1>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;ColorQR is a free online tool for generating custom QR codes with beautiful color schemes.
+      Unlike many competitors, our free QR codes never expire.</p>
+  </div>
+</body>
+</html>

@@ -1,129 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Meta -->
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QR Code Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Create beautiful QR codes for free with ColorQR. No expiration — your QR code works forever. Download in JPG or SVG. Simple, colorful, and mobile-friendly." />
+
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="canonical" href="https://colorqr.app/" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root { --card-narrow: 560px; --card-wide: 980px; }
-    body { font-family:'Poppins',sans-serif; background:#f3f6fa; color:#333; display:flex; flex-direction:column; align-items:center; padding:1rem; }
-    .card { background:#fff; padding:1.5rem; border-radius:12px; box-shadow:0 4px 8px rgba(0,0,0,.1); width:100%; max-width:var(--card-narrow); transition:max-width .25s ease; }
-    .card.wide { max-width:var(--card-wide); }
-
-    /* Сетка: по умолчанию 1 колонка; после генерации — 2 */
-    .columns { display:grid; grid-template-columns: 1fr; gap:1.25rem; align-items:start; }
-    @media (min-width: 980px) {
-      .columns.twocols { grid-template-columns: 1.1fr 0.9fr; }
-    }
-
-    /* Левая колонка (форма) */
-    .generator h2 { margin: 0 0 .75rem 0; text-align:center; }
-    input, button { box-sizing:border-box; padding:.7rem; margin:.5rem 0; border-radius:6px; border:1px solid #ccc; width:100%; font-family:inherit; font-size:1rem; }
-    button { background:#3b82f6; color:#fff; border:none; cursor:pointer; transition:background .2s ease; }
-    button:hover { background:#2563eb; }
-    .size { display:flex; gap:.75rem; justify-content:center; margin:.5rem 0 1rem; font-size:.95rem; flex-wrap:wrap; }
-    .size label { display:flex; align-items:center; gap:.35rem; }
-
-    .palette { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin:1rem 0; }
-    .swatch { display:flex; flex-direction:column; align-items:center; font-size:.75rem; color:#555; text-align:center; }
-    .swatch button { width:60px; height:40px; border:none; border-radius:6px; cursor:pointer; margin-bottom:.3rem; }
-
-    .error { display:none; color:#dc2626; font-size:.85rem; margin-top:.25rem; text-align:left; }
-
-    /* Правая колонка (превью) — скрыта до генерации */
-    .preview {
-      display: none;
-      position: sticky;
-      top: 1rem;
-      flex-direction: column;
-      align-items: center;
-    }
-    .qr-box {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height: 320px;
-      border:1px dashed #e5e7eb;
-      border-radius:10px;
-      background:#fafbff;
-      padding:1rem;
-      margin-bottom:1rem;
-      width:100%;
-    }
-    .qr-box img { max-width:100%; height:auto; }
-
-    .downloads { display:none; margin-top:.5rem; display:flex; gap:.5rem; width:100%; justify-content:center; }
-    .downloads a { flex:1; text-decoration:none; text-align:center; background:#10b981; color:#fff; padding:.7rem; border-radius:6px; transition:background .2s ease; max-width:140px; }
-    .downloads a:hover { background:#059669; }
-
-    /* Мобилка */
-    @media (max-width: 600px) {
-      .palette { grid-template-columns:repeat(2,1fr); gap:.6rem; }
-      .swatch button { width:100%; height:45px; }
-      input, button { font-size:1.1rem; padding:.9rem; }
-      .downloads { flex-direction:column; gap:.7rem; }
-      .downloads a { max-width:100%; font-size:1.05rem; padding:1rem; }
-      .preview { position: static; }
-    }
-  </style>
 </head>
 <body>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <a href="/" class="logo-link">ColorQR</a>
+      {% if is_pro %}
+        <span class="badge badge-pro" title="Pro active">Pro</span>
+      {% elif is_one_time %}
+        <span class="badge badge-ot" title="One-Time Access active">One-Time</span>
+      {% endif %}
+    </div>
+    <div class="user-box">
+      {% if user %}
+        {% if user.picture %}<img src="{{ user.picture }}" alt="avatar">{% endif %}
+        <span class="user-email">{{ user.email }}</span>
+        <a class="logout-btn" href="/logout">Logout</a>
+      {% else %}
+        <a class="login-btn" href="/login">Login with Google</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
+    <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
+    <a href="/pricing" class="{{ 'active' if active=='pricing' else '' }}">Pricing</a>
+    <a href="/faq"     class="{{ 'active' if active=='faq'     else '' }}">FAQ</a>
+    <a href="/blog"    class="{{ 'active' if active=='blog'    else '' }}">Blog</a>
+    <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
+  </nav>
+
   <div class="card" id="card">
     <div class="columns" id="cols">
-      <!-- Левая колонка -->
+      <!-- Left -->
       <div class="generator">
         <h2>QR Code Generator</h2>
-        <input id="link" type="text" placeholder="Enter link (we'll add https:// if missing)">
-        <div id="err" class="error">Please enter a link</div>
 
-        <div class="size">
-          <label><input type="radio" name="sz" value="sm"> Small</label>
-          <label><input type="radio" name="sz" value="md" checked> Medium</label>
-          <label><input type="radio" name="sz" value="lg"> Large</label>
+        <!-- Type tabs -->
+        <div class="type-tabs" role="tablist" aria-label="QR types">
+          <label class="seg"><input type="radio" name="qrtype" value="url"  checked><span>URL</span></label>
+          <label class="seg"><input type="radio" name="qrtype" value="wifi"><span>Wi-Fi</span></label>
+          <label class="seg"><input type="radio" name="qrtype" value="text"><span>Text</span></label>
+          {% if show_vcard %}
+            <label class="seg"><input type="radio" name="qrtype" value="vcard"><span>vCard</span></label>
+            <label class="seg"><input type="radio" name="qrtype" value="dynamic"><span>Dynamic</span></label>
+          {% endif %}
         </div>
 
+        <!-- URL -->
+        <div id="form-url" class="form-section">
+          <input id="link" type="text" placeholder="Enter link (we'll add https:// if missing)">
+          <div id="err" class="error">Please enter a link</div>
+        </div>
+
+        <!-- Wi-Fi -->
+        <div id="form-wifi" class="form-section" hidden>
+          <label for="wifi-ssid">Wi-Fi SSID</label>
+          <input id="wifi-ssid" type="text" placeholder="Network name">
+
+          <label for="wifi-pass">Password</label>
+          <input id="wifi-pass" type="text" placeholder="Leave empty for open network">
+
+          <label for="wifi-enc">Encryption</label>
+          <select id="wifi-enc">
+            <option value="WPA" selected>WPA/WPA2</option>
+            <option value="WPA3">WPA3</option>
+            <option value="WEP">WEP</option>
+            <option value="nopass">No password</option>
+          </select>
+
+          <div id="err-wifi" class="error">Please enter SSID</div>
+          <div class="note-lock" style="margin-top:.25rem;color:#6b7280;">
+            Wi-Fi codes include a small center icon automatically.
+          </div>
+        </div>
+
+        <!-- Text -->
+        <div id="form-text" class="form-section" hidden>
+          <textarea id="plain-text" rows="4" placeholder="Your text to encode"></textarea>
+          <div id="err-text" class="error">Please enter text</div>
+        </div>
+
+        <!-- vCard (Pro only) -->
+        {% if show_vcard %}
+        <div id="form-vcard" class="form-section" hidden>
+          <label for="vc-name">Full name</label>
+          <input id="vc-name" type="text" placeholder="e.g., Jane Doe">
+
+          <label for="vc-title">Title (optional)</label>
+          <input id="vc-title" type="text" placeholder="e.g., Product Manager">
+
+          <label for="vc-phone">Phone</label>
+          <input id="vc-phone" type="text" placeholder="+420 777 123 456">
+
+          <label for="vc-email">Email</label>
+          <input id="vc-email" type="email" placeholder="name@company.com">
+
+          <label for="vc-org">Company (optional)</label>
+          <input id="vc-org" type="text" placeholder="Company s.r.o.">
+
+          <label for="vc-url">Website (optional)</label>
+          <input id="vc-url" type="text" placeholder="https://example.com">
+
+          <div id="err-vcard" class="error">Please enter at least a name or email</div>
+        </div>
+        {% endif %}
+
+        <!-- Dynamic (Pro only) -->
+        {% if show_dynamic %}
+        <div id="form-dynamic" class="form-section" hidden>
+          <label for="dyn-url">Target URL</label>
+          <input id="dyn-url" type="text" placeholder="https://destination.com/page">
+          <div id="err-dyn" class="error">Please enter a URL</div>
+          <div class="note-lock" style="margin-top:.25rem;color:#6b7280;">
+            You can update the target anytime in your dashboard (coming soon).
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Custom icon uploader (Pro + vCard only) -->
+        {% if is_pro %}
+        <div id="custom-icon-uploader" class="form-section" hidden>
+          <label class="label">Center icon (vCard)</label>
+          <div id="icon-drop" class="uploader" role="button" tabindex="0" aria-label="Upload PNG icon">
+            <div class="uploader-inner">
+              <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M7 10l5-5 5 5M12 5v11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <div class="uploader-text">
+                <div class="uploader-title">Drag & drop PNG here</div>
+                <div class="uploader-sub">or <span class="uploader-link">choose a file</span> (≤ 512 KB)</div>
+              </div>
+              <input id="icon-file" type="file" accept="image/png" hidden>
+            </div>
+          </div>
+          <div id="icon-upload-status" class="uploader-status"></div>
+        </div>
+        {% endif %}
+
+        <!-- Size -->
+        <div class="size">
+          <label class="seg"><input type="radio" name="sz" value="sm"><span>Small (256px)</span></label>
+          <label class="seg"><input type="radio" name="sz" value="md" checked><span>Medium (512px)</span></label>
+          {% if is_paid %}
+          <label class="seg"><input type="radio" name="sz" value="lg"><span>Large (1024px)</span></label>
+          {% endif %}
+        </div>
+
+        <!-- Palettes -->
         <h4 style="text-align:center;margin:.5rem 0 0;">Pick a color scheme:</h4>
         <div class="palette">
+          <!-- Free 4 -->
           <div class="swatch"><button style="background:linear-gradient(45deg,#000000 50%,#ffffff 50%)" onclick="setColors('#000000','#ffffff')"></button>Classic B/W</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#023e8a 50%,#bee1e6 50%)" onclick="setColors('#023e8a','#bee1e6')"></button>Navy / Powder</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#2a9d8f 50%,#f0efeb 50%)" onclick="setColors('#2a9d8f','#f0efeb')"></button>Seafoam / Linen</div>
+          <div class="swatch"><button style="background:linear-gradient(45deg,#1d4ed8 50%,#dbeafe 50%)" onclick="setColors('#1d4ed8','#dbeafe')"></button>Royal / Soft</div>
+
+          {% if extra_palettes %}
+          <!-- +16 for paid -->
           <div class="swatch"><button style="background:linear-gradient(45deg,#6a0d2d 50%,#fde2e4 50%)" onclick="setColors('#6a0d2d','#fde2e4')"></button>Burgundy / Blush</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#2f5d62 50%,#e2f0cb 50%)" onclick="setColors('#2f5d62','#e2f0cb')"></button>Teal / Mint</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#023e8a 50%,#bee1e6 50%)" onclick="setColors('#023e8a','#bee1e6')"></button>Navy / Powder</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#7c4700 50%,#fff1c1 50%)" onclick="setColors('#7c4700','#fff1c1')"></button>Brown / Cream</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#0f4c5c 50%,#e0fbfc 50%)" onclick="setColors('#0f4c5c','#e0fbfc')"></button>Deep Teal / Ice</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#9b2226 50%,#fefae0 50%)" onclick="setColors('#9b2226','#fefae0')"></button>Red / Cream</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#283618 50%,#dda15e 50%)" onclick="setColors('#283618','#dda15e')"></button>Olive / Sand</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#14213d 50%,#fca311 50%)" onclick="setColors('#14213d','#fca311')"></button>Navy / Amber</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#1b4332 50%,#d8f3dc 50%)" onclick="setColors('#1b4332','#d8f3dc')"></button>Forest / Mint</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#5f0f40 50%,#e0aaff 50%)" onclick="setColors('#5f0f40','#e0aaff')"></button>Purple / Lavender</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#2d00f7 50%,#cdb4db 50%)" onclick="setColors('#2d00f7','#cdb4db')"></button>Indigo / Lilac</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#780000 50%,#ffddd2 50%)" onclick="setColors('#780000','#ffddd2')"></button>Dark Red / Peach</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#006d77 50%,#edf6f9 50%)" onclick="setColors('#006d77','#edf6f9')"></button>Teal / Soft Blue</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#1a759f 50%,#caf0f8 50%)" onclick="setColors('#1a759f','#caf0f8')"></button>Blue / Aqua</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#582f0e 50%,#ffe5b4 50%)" onclick="setColors('#582f0e','#ffe5b4')"></button>Coffee / Beige</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#5a189a 50%,#e0aaff 50%)" onclick="setColors('#5a189a','#e0aaff')"></button>Violet / Lavender</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#264653 50%,#e9c46a 50%)" onclick="setColors('#264653','#e9c46a')"></button>Blue Gray / Yellow</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#2a9d8f 50%,#f0efeb 50%)" onclick="setColors('#2a9d8f','#f0efeb')"></button>Seafoam / Linen</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#9d0208 50%,#ffb4a2 50%)" onclick="setColors('#9d0208','#ffb4a2')"></button>Crimson / Coral</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#386641 50%,#f2e8cf 50%)" onclick="setColors('#386641','#f2e8cf')"></button>Moss / Cream</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#03045e 50%,#ade8f4 50%)" onclick="setColors('#03045e','#ade8f4')"></button>Deep Blue / Sky</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#6d597a 50%,#f6e9ff 50%)" onclick="setColors('#6d597a','#f6e9ff')"></button>Plum / Lilac</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#432818 50%,#ffedd8 50%)" onclick="setColors('#432818','#ffedd8')"></button>Brown / Apricot</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#0b090a 50%,#e9ecef 50%)" onclick="setColors('#0b090a','#e9ecef')"></button>Black / Soft Gray</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#6c757d 50%,#f8f9fa 50%)" onclick="setColors('#6c757d','#f8f9fa')"></button>Gray / Off-White</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#2d6a4f 50%,#d8f3dc 50%)" onclick="setColors('#2d6a4f','#d8f3dc')"></button>Emerald / Pale Green</div>
-          <div class="swatch"><button style="background:linear-gradient(45deg,#1d4ed8 50%,#dbeafe 50%)" onclick="setColors('#1d4ed8','#dbeafe')"></button>Royal Blue / Soft Sky</div>
+
+          <!-- Custom color button -->
+          <div class="swatch custom-color">
+            <button id="custom-color-btn" style="background:linear-gradient(45deg,#4b5563 50%,#f3f4f6 50%);border:1px dashed #9ca3af;">Custom color…</button>
+            <input id="custom-color-input" type="color" hidden>
+          </div>
+          {% endif %}
         </div>
 
         <button id="genBtn" onclick="onGenerateClick()">Generate</button>
       </div>
 
-      <!-- Правая колонка (скрыта до генерации) -->
+      <!-- Right -->
       <div class="preview" id="preview">
-        <div class="qr-box" id="result"></div>
+        <div class="qr-box" id="result" style="min-height:320px"></div>
         <div id="downloads" class="downloads">
-          <a id="dl-png" href="#" download>PNG</a>
-          <a id="dl-pdf" href="#" download>PDF</a>
+          <a id="dl-jpg" href="#" download>JPG</a>
+          {% if is_pro %}
+          <a id="dl-svg" href="#" download>SVG</a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -133,84 +217,149 @@
     let selectedFill = "#000000";
     let selectedBack = "#ffffff";
     let typingTimer = null;
-    let hasGenerated = false; // после первого успешного рендера — true
+    let hasGenerated = false;
 
     function setColors(fill, back) {
-      selectedFill = fill;
-      selectedBack = back;
-      // автообновление только если уже был первый рендер
-      if (hasGenerated && document.getElementById('link').value.trim()) {
-        generateQR();
-      }
+      selectedFill = fill; selectedBack = back;
+      if (hasGenerated) debounceGenerate();
     }
-
     function getSize() {
       const el = document.querySelector('input[name="sz"]:checked');
       return el ? el.value : 'md';
     }
-
     function withProto(url) {
-      const v = (url || '').trim();
-      if (!v) return '';
+      const v = (url || '').trim(); if (!v) return '';
       const low = v.toLowerCase();
       if (low.startsWith('http://') || low.startsWith('https://')) return v;
       return 'https://' + v;
     }
-
-    function showError(msg) {
-      const e = document.getElementById('err');
-      e.textContent = msg || 'Please enter a link';
-      e.style.display = 'block';
+    function showError(id,msg){
+      const e=document.getElementById(id); if(!e) return;
+      e.textContent=msg||e.textContent; e.style.display='block';
     }
-    function clearError() {
-      document.getElementById('err').style.display = 'none';
+    function clearError(id){
+      const e=document.getElementById(id); if(!e) return;
+      e.style.display='none';
+    }
+    function currentType(){
+      const el = document.querySelector('input[name="qrtype"]:checked');
+      return el ? el.value : 'url';
+    }
+    function switchForms(){
+      const t = currentType();
+      document.getElementById('form-url').hidden   = t!=='url';
+      document.getElementById('form-wifi').hidden  = t!=='wifi';
+      document.getElementById('form-text').hidden  = t!=='text';
+      const vc = document.getElementById('form-vcard'); if (vc) vc.hidden = t!=='vcard';
+      const dy = document.getElementById('form-dynamic'); if (dy) dy.hidden = t!=='dynamic';
+
+      // uploader — только vCard (и только Pro по серверному флагу, сам блок рендерится условно)
+      const up = document.getElementById('custom-icon-uploader');
+      if (up) up.hidden = !(t === 'vcard');
+
+      // при смене типа — сбрасываем превью, но сохраняем область
+      document.getElementById('result').innerHTML = '';
+      document.getElementById('downloads').style.display = 'none';
+    }
+
+    function buildVCard(){
+      const name = document.getElementById('vc-name').value.trim();
+      const title= document.getElementById('vc-title').value.trim();
+      const phone= document.getElementById('vc-phone').value.trim();
+      const email= document.getElementById('vc-email').value.trim();
+      const org  = document.getElementById('vc-org').value.trim();
+      const url  = document.getElementById('vc-url').value.trim();
+      if (!name && !email && !phone) {
+        showError('err-vcard','Please enter at least a name, email or phone');
+        return { ok:false };
+      }
+      clearError('err-vcard');
+      const lines = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        name ? `N:;${name};;;` : '',
+        name ? `FN:${name}` : '',
+        title? `TITLE:${title}` : '',
+        phone? `TEL:${phone}` : '',
+        email? `EMAIL:${email}` : '',
+        org  ? `ORG:${org}` : '',
+        url  ? `URL:${url}` : '',
+        'END:VCARD'
+      ].filter(Boolean).join('\n');
+      return { ok:true, data: lines, data_type:'vcard' };
+    }
+
+    function buildData(){
+      const t = currentType();
+      if (t === 'wifi') {
+        const ssid = document.getElementById('wifi-ssid').value.trim();
+        const pass = document.getElementById('wifi-pass').value.trim();
+        const enc  = document.getElementById('wifi-enc').value;
+        if (!ssid) { showError('err-wifi','Please enter SSID'); return { ok:false }; }
+        if ((enc === 'WPA' || enc === 'WPA3' || enc === 'WEP') && !pass) {
+          showError('err-wifi','Password required for ' + enc); return { ok:false };
+        }
+        clearError('err-wifi');
+        const encPart = enc === 'nopass' ? 'nopass' : enc;
+        const passPart = enc === 'nopass' ? '' : `;P:${pass}`;
+        return { ok:true, data:`WIFI:T:${encPart};S:${ssid}${passPart};;`, data_type:'wifi' };
+      } else if (t === 'text') {
+        const txt = document.getElementById('plain-text').value.trim();
+        if (!txt) { showError('err-text','Please enter text'); return { ok:false }; }
+        clearError('err-text');
+        return { ok:true, data: txt, data_type:'text' };
+      } else if (t === 'vcard') {
+        return buildVCard();
+      } else if (t === 'dynamic') {
+        const url = document.getElementById('dyn-url').value.trim();
+        if (!url) { showError('err-dyn','Please enter a URL'); return { ok:false }; }
+        clearError('err-dyn');
+        return { ok:true, data: withProto(url), data_type:'dynamic' };
+      } else {
+        const raw = document.getElementById('link').value.trim();
+        if (!raw) { showError('err','Please enter a link'); return { ok:false }; }
+        clearError('err');
+        return { ok:true, data: withProto(raw), data_type:'url' };
+      }
     }
 
     async function onGenerateClick() {
-      const raw = document.getElementById('link').value.trim();
-      if (!raw) {
-        showError('Please enter a link');
-        return; // не генерим пустое
-      }
-      clearError();
+      const built = buildData();
+      if (!built.ok) return;
 
-      // первый успешный рендер — расширяем карточку и показываем превью-колонку
       if (!hasGenerated) {
         document.getElementById('card').classList.add('wide');
         document.getElementById('cols').classList.add('twocols');
       }
 
-      await generateQR();
+      await generateQR(built);
       hasGenerated = true;
       document.getElementById('preview').style.display = 'flex';
     }
 
-    async function generateQR() {
-      const raw = document.getElementById('link').value.trim();
+    async function generateQR(built) {
+      const payload = built || buildData();
+      if (!payload.ok) return;
+
+      const res = await fetch('/generate_qr', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          data: payload.data,
+          data_type: payload.data_type,
+          fill_color: selectedFill,
+          back_color: selectedBack,
+          size: getSize()
+        })
+      });
+      const data = await res.json();
       const result = document.getElementById('result');
       const downloads = document.getElementById('downloads');
 
-      if (!raw) {
-        // если вдруг очистили поле — скрываем превью (но не ломаем раскладку)
-        result.innerHTML = '';
-        downloads.style.display = 'none';
-        return;
-      }
-
-      const link = withProto(raw);
-      const size = getSize();
-
-      const res = await fetch('/generate_qr', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ link, fill_color: selectedFill, back_color: selectedBack, size })
-      });
-
-      const data = await res.json();
       if (data.qr_code && data.id) {
-        result.innerHTML = `<img src="data:image/png;base64,${data.qr_code}" alt="QR Code">`;
-        document.getElementById('dl-png').href = `/download_png?id=${data.id}`;
-        document.getElementById('dl-pdf').href = `/download_pdf?id=${data.id}`;
+        result.innerHTML = `<img src="data:image/jpeg;base64,${data.qr_code}" alt="QR Code">`;
+        document.getElementById('dl-jpg').href = `/download_jpg?id=${data.id}`;
+        const svg = document.getElementById('dl-svg');
+        if (svg) svg.href = `/download_svg?id=${data.id}`;
         downloads.style.display = 'flex';
       } else {
         downloads.style.display = 'none';
@@ -218,19 +367,107 @@
       }
     }
 
-    // Ввод: убираем ошибку и, если уже был рендер, делаем превью с дебаунсом
-    document.getElementById('link').addEventListener('input', () => {
-      clearError();
+    function debounceGenerate(){
       if (!hasGenerated) return;
       clearTimeout(typingTimer);
-      typingTimer = setTimeout(generateQR, 500);
+      typingTimer = setTimeout(()=>generateQR(), 400);
+    }
+
+    // Listeners
+    document.querySelectorAll('input[name="qrtype"]').forEach(r => {
+      r.addEventListener('change', () => { switchForms(); /* не автогенерим */ });
     });
-    // Переключение размера: автопревью только после первого рендера
-    document.querySelectorAll('input[name="sz"]').forEach(r => {
-      r.addEventListener('change', () => {
-        if (hasGenerated && document.getElementById('link').value.trim()) generateQR();
+    document.getElementById('link').addEventListener('input', debounceGenerate);
+    const ssid = document.getElementById('wifi-ssid'); if (ssid) ssid.addEventListener('input', debounceGenerate);
+    const wpass= document.getElementById('wifi-pass'); if (wpass) wpass.addEventListener('input', debounceGenerate);
+    const wenc = document.getElementById('wifi-enc');  if (wenc)  wenc.addEventListener('change', debounceGenerate);
+    const ptxt = document.getElementById('plain-text'); if (ptxt) ptxt.addEventListener('input', debounceGenerate);
+    const dyn  = document.getElementById('dyn-url'); if (dyn) dyn.addEventListener('input', debounceGenerate);
+
+    // Custom icon upload (Pro only + vCard only)
+    (function(){
+      const drop = document.getElementById('icon-drop');
+      const input = document.getElementById('icon-file');
+      const status = document.getElementById('icon-upload-status');
+      if (!drop || !input) return;
+
+      const titleEl = drop.querySelector('.uploader-title');
+      const subEl   = drop.querySelector('.uploader-sub');
+      const linkEl  = drop.querySelector('.uploader-link');
+
+      function setStatus(msg, ok=true){
+        status.style.color = ok ? '#6b7280' : '#b91c1c';
+        status.textContent = msg || '';
+      }
+
+      linkEl.addEventListener('click', (e)=>{
+        e.preventDefault(); e.stopPropagation(); input.click();
       });
-    });
+      drop.addEventListener('click', (e)=>{
+        if (e.target.closest('.uploader-link')) return;
+        if (e.target.closest('.uploader-inner')) input.click();
+      });
+
+      ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,(e)=>{e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover');}));
+      ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,(e)=>{e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover');}));
+      drop.addEventListener('drop', (e)=>{
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+
+      input.addEventListener('change', ()=>{
+        const file = input.files && input.files[0];
+        if (file) handleFile(file);
+      });
+
+      async function handleFile(file){
+        if (file.type !== 'image/png') { setStatus('PNG only', false); return; }
+        if (file.size > 512*1024)      { setStatus('File too large (max 512 KB)', false); return; }
+
+        setStatus('Uploading...');
+        const fd = new FormData(); fd.append('file', file);
+        try {
+          const res  = await fetch('/upload_icon', { method:'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok) { setStatus((data && data.error) ? data.error : 'Upload failed', false); return; }
+
+          drop.classList.add('has-file');
+          drop.setAttribute('aria-label', 'Selected: ' + (file.name || 'icon.png'));
+          titleEl.textContent = file.name || 'icon.png';
+          subEl.innerHTML = 'Click to <span class="uploader-link">change file</span> (≤ 512 KB)';
+          const newLink = drop.querySelector('.uploader-link');
+          newLink.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); input.click(); });
+
+          setStatus('Icon uploaded');
+          if (hasGenerated) {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(()=>generateQR(), 250);
+          }
+        } catch(e){
+          setStatus('Upload error', false);
+        }
+      }
+    })();
+
+    // Custom color trigger (Paid)
+    (function(){
+      const btn = document.getElementById('custom-color-btn');
+      const inp = document.getElementById('custom-color-input');
+      if (!btn || !inp) return;
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault(); inp.click();
+      });
+      inp.addEventListener('input', ()=>{
+        // пользователь выбрал собственный цвет "fill"; фоновый оставим светлым
+        const fill = inp.value || '#111111';
+        const back = selectedBack; // можно смешивать для органики, но оставим как есть
+        setColors(fill, back);
+        btn.style.background = `linear-gradient(45deg, ${fill} 50%, ${back} 50%)`;
+      });
+    })();
+
+    // Init
+    switchForms();
   </script>
 </body>
 </html>

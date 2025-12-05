@@ -1,0 +1,152 @@
+:root { --card-narrow: 480px; --card-wide: 980px; }
+
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif; color:#111827; background:#f5f7fb; }
+img { max-width:100%; height:auto; }
+
+.header { display:flex; align-items:center; justify-content:space-between; max-width:1080px; margin:18px auto 10px; padding:0 14px; }
+.logo-link { font-weight:600; font-size:1.2rem; color:#333; text-decoration:none; }
+.logo { display:flex; align-items:center; gap:.5rem; }
+.badge { font-size:.78rem; padding:.15rem .45rem; border-radius:999px; border:1px solid transparent; }
+.badge-pro { background:#eaf3ff; border-color:#bfdbfe; color:#1d4ed8; }
+.badge-ot  { background:#eafff4; border-color:#bbf7d0; color:#047857; }
+
+.user-box { display:flex; align-items:center; gap:.6rem; }
+.user-box img { width:28px; height:28px; border-radius:50%; }
+.user-email { font-size:.9rem; color:#374151; }
+
+.login-btn, .logout-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  text-decoration:none; background:#3b82f6; color:#fff;
+  padding:.55rem .85rem; border-radius:8px; font-weight:500; line-height:1;
+}
+.logout-btn { background:#6b7280; }
+
+nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;      /* <— центрируем */
+  gap:.6rem;
+  padding:6px 10px;
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,.06);
+  width:fit-content;           /* компактная капсула */
+  max-width:calc(100% - 28px); /* не уезжает на мобилке */
+  margin:0 auto 14px;          /* <— по центру контейнера */
+  flex-wrap:wrap;
+}
+
+nav a{
+  color:#374151;
+  text-decoration:none;
+  padding:.46rem .72rem;
+  border-radius:9999px;        /* «пилюли» у пунктов меню */
+}
+
+nav a.active,
+nav a:hover{
+  background:#e5f0ff;
+  color:#1d4ed8;
+}
+
+@media (max-width: 520px){
+  nav{ gap:.4rem; padding:6px 8px; }
+  nav a{ padding:.42rem .62rem; }
+}
+
+.card { background:#fff; padding:1.2rem; border-radius:14px; box-shadow:0 4px 10px rgba(0,0,0,.08); width:100%; max-width:var(--card-narrow); transition:max-width .25s ease; margin:0 auto 20px; }
+.card.wide { max-width:var(--card-wide); }
+
+.columns { display:grid; grid-template-columns: 1fr; gap:1.1rem; align-items:start; }
+@media (min-width: 980px) {
+  .columns.twocols { grid-template-columns: 1.1fr 0.9fr; }
+}
+
+.generator h2 { margin: 0 0 .75rem 0; text-align:center; }
+
+input, button, select, textarea {
+  font: inherit; font-size:1rem; padding:.7rem; margin:.45rem 0;
+  border-radius:8px; border:1px solid #d1d5db; width:100%;
+}
+button { background:#3b82f6; color:#fff; border:none; cursor:pointer; transition:background .2s ease; }
+button:hover { background:#2563eb; }
+textarea { resize:vertical; }
+
+.size { display:flex; gap:.5rem; flex-wrap:nowrap; justify-content:center; }
+.size .seg { margin:.2rem; }
+.size .seg span { padding:.45rem .8rem; white-space:nowrap; }
+
+/* На мобилке разрешаем перенос */
+@media (max-width: 640px){
+  .size { flex-wrap:wrap; }
+}
+
+/* Общие мобильные фиксы (горизонтального скролла быть не должно) */
+@media (max-width: 600px) {
+  html, body { overflow-x:hidden; }
+  .card.wide { max-width: 100%; }
+}
+
+.seg { position:relative; display:inline-flex; align-items:center; margin:.2rem; }
+.seg input[type="radio"] { position:absolute; opacity:0; width:0; height:0; }
+.seg span {
+  display:inline-block; padding:.5rem .9rem; border:1px solid #d1d5db; border-radius:9999px;
+  user-select:none; font-size:.95rem; line-height:1.1; background:#fff;
+}
+.seg input[type="radio"]:focus + span { outline:2px solid #93c5fd; outline-offset:2px; }
+.seg input[type="radio"]:checked + span { background:#3b82f6; color:#fff; border-color:#3b82f6; }
+
+.palette { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin:.8rem 0; }
+.swatch { display:flex; flex-direction:column; align-items:center; font-size:.78rem; color:#555; text-align:center; gap:.25rem; }
+.swatch button { width:62px; height:40px; border:none; border-radius:8px; cursor:pointer; box-shadow:0 1px 0 rgba(0,0,0,.05); }
+.custom-color button { border:1px dashed #9ca3af !important; }
+
+.error { display:none; color:#dc2626; font-size:.86rem; margin-top:.15rem; text-align:left; }
+
+.preview { display:none; position:sticky; top:1rem; flex-direction:column; align-items:center; }
+.qr-box {
+  display:flex; align-items:center; justify-content:center;
+  min-height: 320px; border:1px dashed #e5e7eb; border-radius:10px;
+  background:#fafbff; padding:1rem; margin-bottom:1rem; width:100%;
+}
+.qr-box img { max-width:100%; height:auto; }
+
+.downloads { display:none; margin-top:.2rem; gap:.5rem; width:100%; justify-content:center; }
+.downloads a {
+  flex:1; text-decoration:none; text-align:center;
+  background:#10b981; color:#fff; padding:.7rem; border-radius:8px;
+  transition:background .2s ease; max-width:140px;
+}
+.downloads a:hover { background:#059669; }
+
+.form-section label.label{ display:block; margin-bottom:.35rem; color:#374151; font-weight:500; }
+
+/* Uploader */
+.uploader {
+  border:1px dashed #d1d5db; border-radius:12px; background:#fafbff;
+  padding:.9rem; transition: all .15s ease; color:#4b5563;
+}
+.uploader:hover { border-color:#93c5fd; background:#f6f9ff; }
+.uploader.dragover { border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,.08); }
+.uploader-inner { display:flex; align-items:center; gap:.8rem; cursor:pointer; }
+.uploader-inner svg { color:#6b7280; flex:0 0 auto; }
+.uploader-text { line-height:1.2; }
+.uploader-title { font-weight:500; color:#111827; }
+.uploader-sub { font-size:.92rem; color:#6b7280; }
+.uploader-link { color:#2563eb; text-decoration:underline; cursor:pointer; }
+.uploader-status { font-size:.9rem; color:#6b7280; margin-top:.35rem; min-height:1.2em; }
+.uploader.has-file { border-color:#93c5fd; background:#f6f9ff; }
+
+/* Mobile fixes */
+@media (max-width: 600px) {
+  .palette { grid-template-columns:repeat(2,1fr); gap:.7rem; }
+  .swatch button { width:100%; height:48px; }
+  input, button, select, textarea { font-size:1.05rem; padding:.9rem; }
+  .downloads { flex-direction:column; gap:.7rem; }
+  .downloads a { max-width:100%; font-size:1.05rem; padding:1rem; }
+  .preview { position: static; }
+  body { overflow-x:hidden; }
+  .card.wide { max-width: 100%; }
+}
