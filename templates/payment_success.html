@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center py-5">
+    <h2>🎉 Покупка прошла успешно!</h2>
+    <p class="lead">Спасибо за покупку One-Time Access. Ваш платный статус активирован!</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">Создать QR-код</a>
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-:root { --card-narrow: 480px; --card-wide: 980px; }
+:root { --card-narrow: 480px; --card-wide: 1080px; }
 
 * { box-sizing: border-box; }
 html, body { margin:0; padding:0; font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif; color:#111827; background:#f5f7fb; }
@@ -149,4 +149,255 @@ textarea { resize:vertical; }
   .preview { position: static; }
   body { overflow-x:hidden; }
   .card.wide { max-width: 100%; }
+}
+
+/* --- Стили для списка преимуществ на странице тарифов (.feature-list) --- */
+
+.plan ul.feature-list {
+    padding-left: 0;     /* Убираем стандартный отступ списка */
+    list-style: none;
+    margin-top: 1rem;    /* Отступ сверху для списка */
+    margin-bottom: 1rem;
+}
+
+.plan ul.feature-list li {
+    display: flex;       /* Включаем Flexbox для каждого пункта */
+    align-items: flex-start; /* Выравнивание по верхнему краю (для многострочного текста) */
+    gap: 0.6rem;         /* Пространство между иконкой и текстом */
+    margin-bottom: 0.75rem; /* Отступ между строками */
+    padding-left: 0;
+    line-height: 1.35;
+    font-size: 1rem;
+}
+
+.plan ul.feature-list li span {
+    flex-shrink: 0;      /* Предотвращает сжатие иконки/чекбокса */
+    font-size: 1.1em;
+    margin-top: 0.15rem; /* Слегка опускаем иконку для лучшего вида */
+}
+/* Исправление нежелательного поведения тега strong внутри списка */
+.feature-list li strong {
+    font-weight: 700; /* Убеждаемся, что жирность применяется */
+    white-space: normal; /* Запрещаем перенос, который мог быть вызван */
+    display: inline; /* Гарантируем, что это не блочный элемент */
+}
+
+.highlight {
+    font-weight: 700;
+}
+
+.auth-message {
+    background: #eef2ff; /* light indigo */
+    color: #374151;
+    border: 1px solid #c7d2fe;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1.5rem auto;
+    text-align: center;
+    max-width: 600px;
+    font-size: 0.95rem;
+}
+.auth-message h4 {
+    margin-top: 0;
+    color: #4f46e5; /* indigo 600 */
+}
+
+/* Новый блок для сообщения об авторизации */
+.price-auth-block {
+    background-color: #f0fdf4; /* Очень светло-зеленый фон */
+    border: 1px solid #dcfce7; /* Легкая зеленая рамка */
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-top: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.price-auth-block .icon-header h4 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.price-auth-block .body-text {
+    color: #166534; /* Темно-зеленый цвет текста для читаемости */
+    margin-top: 0.75rem;
+    line-height: 1.6;
+}
+
+/* Красивое выделение жирным */
+.price-auth-block strong {
+    font-weight: 700;
+    color: #059669; /* Насыщенно-зеленый */
+}
+
+/* Если у вас нет класса text-green, добавьте его */
+.text-green {
+    color: #059669; /* Тот же цвет, что вы использовали ранее */
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 600px;
+}
+.modal-content h4 {
+    margin-top: 0;
+    color: #111827;
+    text-align: center;
+    font-size: 1.4rem;
+}
+.color-picker-row {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+    justify-content: center;
+}
+.color-picker-column {
+    flex: 1;
+    text-align: center;
+    min-width: 200px;
+}
+.color-picker-column label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #374151;
+}
+.picker-container {
+    width: 100%;
+    max-width: 220px;
+    height: 220px; /* Зарезервировано для JS-пикера (например, iro.js) */
+    margin: 0 auto 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+/* Стили для текстового ввода HEX */
+#fillHexValue, #backHexValue {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1rem;
+    font-family: monospace;
+}
+
+/* Стили для панели контраста */
+.contrast-panel {
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: center;
+    font-weight: 600;
+}
+.contrast-safe {
+    background: #d1fae5; /* Green */
+    color: #065f46;
+}
+.contrast-warning {
+    background: #fee2e2; /* Red */
+    color: #991b1b;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+.modal-actions button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.hex-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Расстояние между квадратом и полем ввода */
+    margin-top: 5px;
+}
+
+.color-swatch-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db; /* Светлая граница */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.15s ease-in-out;
+}
+
+/* Очищаем старые стили, если они еще остались в .hex-input-display */
+#fillHexValue, #backHexValue {
+    flex-grow: 1; /* Поле ввода занимает оставшееся место */
+    padding-left: 8px; /* Убираем лишний отступ */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1rem;
+    font-family: monospace;
+}
+
+/*For Pricing Page */
+    /* Уменьшение шрифта для списка преимуществ */
+    .feature-list li {
+        font-size: 0.95rem;
+        margin-bottom: 0.65rem;
+        line-height: 1.3;
+    }
+    /* Исправление выравнивания цены в колонке FREE */
+    .plan-header {
+        margin-bottom: 1.5rem;
+    }
+    .plan-header p {
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+    }
+
+    /* НОВЫЕ СТИЛИ ДЛЯ СООБЩЕНИЯ О БЕЗОПАСНОСТИ */
+    .auth-message {
+        background: #eef2ff; /* light indigo */
+        color: #374151;
+        border: 1px solid #c7d2fe;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1.5rem auto;
+        text-align: center;
+        max-width: 600px;
+        font-size: 0.95rem;
+    }
+    .auth-message h4 {
+        margin-top: 0;
+        color: #4f46e5; /* indigo 600 */
+    }
+    .price-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+
+/* Адаптивность для модалки */
+@media (max-width: 480px) {
+    .color-picker-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .picker-container {
+        max-width: 80%; /* Занимает 80% ширины экрана */
+    }
 }

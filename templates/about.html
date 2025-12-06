@@ -3,26 +3,31 @@
 <head>
   <title>About - Color QR Generator</title>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <meta name="description" content="Create beautiful, scannable QR codes for your brand. Get vector SVG print quality, guaranteed contrast, dynamic QR codes, and logo embedding with ColorQR." />
+  <link rel="icon" type="image/png" href="/static/favicon.png"/>
   <link rel="stylesheet" href="/static/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="canonical" href="https://colorqr.app/" />
 </head>
 <body>
 <div class="header">
   <div class="logo">
-    <a href="/" style="font-weight:600;font-size:1.2rem;color:#333;text-decoration:none;">ColorQR</a>
-  </div>
+      <a href="/" class="logo-link">ColorQR</a>
+      {% if is_pro %}
+        <span class="badge badge-pro" title="Pro active">Pro</span>
+      {% elif is_one_time %}
+        <span class="badge badge-ot" title="One-Time Access active">One-Time</span>
+      {% endif %}
+    </div>
   <div class="user-box">
-    {% if user %}
-      {% if user.picture %}<img src="{{ user.picture }}" alt="avatar">{% endif %}
-      <span>{{ user.email }}</span>
-      {% if is_premium %}<span class="badge-pro">Pro</span>{% endif %}
-      <a class="logout-btn" href="/logout">Logout</a>
-    {% else %}
-      <a class="login-btn" href="/login">Login with Google</a>
-    {% endif %}
-  </div>
+      {% if user %}
+        {% if user.picture %}<img src="{{ user.picture }}" alt="avatar">{% endif %}
+        <span class="user-email">{{ user.email }}</span>
+        <a class="logout-btn" href="/logout">Logout</a>
+      {% else %}
+        <a class="login-btn" href="/login">Login with Google</a>
+      {% endif %}
+    </div>
 </div>
 
 <nav>
@@ -33,9 +38,6 @@
   <a href="/blog"    class="{{ 'active' if active=='blog'    else '' }}">Blog</a>
   <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
 </nav>
-
-
-
 
   <div class="card" id="card">
       <h1>About Color QR Generator</h1>

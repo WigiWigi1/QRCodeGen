@@ -1,19 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Meta -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Code Generator</title>
-  <meta name="description" content="Create beautiful QR codes for free with ColorQR. No expiration — your QR code works forever. Download in JPG or SVG. Simple, colorful, and mobile-friendly." />
+  <title>ColorQR: Scan Confidence. Print Perfect.</title>
+  <meta name="description" content="Create beautiful, scannable QR codes for your brand. Get vector SVG print quality, guaranteed contrast, dynamic QR codes, and logo embedding with ColorQR." />
 
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/iro.min.js"></script>
   <link rel="canonical" href="https://colorqr.app/" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* 1. Стили для секции преимуществ внизу */
+    .features-section {
+        max-width: 980px;
+        margin: 3rem auto 40px;
+        padding: 0 14px;
+        text-align: center;
+    }
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+        text-align: left;
+    }
+    .feature-hint {
+        padding: 1rem;
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 6px rgba(0,0,0,.04);
+    }
+    .feature-hint h4 {
+        margin: 0 0 0.25rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #1d4ed8;
+    }
+    .feature-hint p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #4b5563;
+    }
+    /* Адаптивность для нижней секции */
+    @media (max-width: 768px) {
+        .features-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Стили для Hero-текста */
+    .hero-text-container h1 {
+        font-size: 1.8rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        color: #111827;
+        text-align: center;
+    }
+    .hero-text-container p {
+        font-size: 1.05rem;
+        color: #4b5563;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+  </style>
+
 </head>
 <body>
-  <!-- Header -->
   <div class="header">
     <div class="logo">
       <a href="/" class="logo-link">ColorQR</a>
@@ -34,7 +88,6 @@
     </div>
   </div>
 
-  <!-- Nav -->
   <nav>
     <a href="/"        class="{{ 'active' if active=='home'    else '' }}">Home</a>
     <a href="/about"   class="{{ 'active' if active=='about'   else '' }}">About</a>
@@ -46,11 +99,9 @@
 
   <div class="card" id="card">
     <div class="columns" id="cols">
-      <!-- Left -->
       <div class="generator">
         <h2>QR Code Generator</h2>
 
-        <!-- Type tabs -->
         <div class="type-tabs" role="tablist" aria-label="QR types">
           <label class="seg"><input type="radio" name="qrtype" value="url"  checked><span>URL</span></label>
           <label class="seg"><input type="radio" name="qrtype" value="wifi"><span>Wi-Fi</span></label>
@@ -61,13 +112,11 @@
           {% endif %}
         </div>
 
-        <!-- URL -->
         <div id="form-url" class="form-section">
           <input id="link" type="text" placeholder="Enter link (we'll add https:// if missing)">
           <div id="err" class="error">Please enter a link</div>
         </div>
 
-        <!-- Wi-Fi -->
         <div id="form-wifi" class="form-section" hidden>
           <label for="wifi-ssid">Wi-Fi SSID</label>
           <input id="wifi-ssid" type="text" placeholder="Network name">
@@ -89,13 +138,11 @@
           </div>
         </div>
 
-        <!-- Text -->
         <div id="form-text" class="form-section" hidden>
           <textarea id="plain-text" rows="4" placeholder="Your text to encode"></textarea>
           <div id="err-text" class="error">Please enter text</div>
         </div>
 
-        <!-- vCard (Pro only) -->
         {% if show_vcard %}
         <div id="form-vcard" class="form-section" hidden>
           <label for="vc-name">Full name</label>
@@ -120,7 +167,6 @@
         </div>
         {% endif %}
 
-        <!-- Dynamic (Pro only) -->
         {% if show_dynamic %}
         <div id="form-dynamic" class="form-section" hidden>
           <label for="dyn-url">Target URL</label>
@@ -132,7 +178,6 @@
         </div>
         {% endif %}
 
-        <!-- Custom icon uploader (Pro + vCard only) -->
         {% if is_pro %}
         <div id="custom-icon-uploader" class="form-section" hidden>
           <label class="label">Center icon (vCard)</label>
@@ -153,7 +198,6 @@
         </div>
         {% endif %}
 
-        <!-- Size -->
         <div class="size">
           <label class="seg"><input type="radio" name="sz" value="sm"><span>Small (256px)</span></label>
           <label class="seg"><input type="radio" name="sz" value="md" checked><span>Medium (512px)</span></label>
@@ -162,17 +206,14 @@
           {% endif %}
         </div>
 
-        <!-- Palettes -->
         <h4 style="text-align:center;margin:.5rem 0 0;">Pick a color scheme:</h4>
         <div class="palette">
-          <!-- Free 4 -->
           <div class="swatch"><button style="background:linear-gradient(45deg,#000000 50%,#ffffff 50%)" onclick="setColors('#000000','#ffffff')"></button>Classic B/W</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#023e8a 50%,#bee1e6 50%)" onclick="setColors('#023e8a','#bee1e6')"></button>Navy / Powder</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#2a9d8f 50%,#f0efeb 50%)" onclick="setColors('#2a9d8f','#f0efeb')"></button>Seafoam / Linen</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#1d4ed8 50%,#dbeafe 50%)" onclick="setColors('#1d4ed8','#dbeafe')"></button>Royal / Soft</div>
 
           {% if extra_palettes %}
-          <!-- +16 for paid -->
           <div class="swatch"><button style="background:linear-gradient(45deg,#6a0d2d 50%,#fde2e4 50%)" onclick="setColors('#6a0d2d','#fde2e4')"></button>Burgundy / Blush</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#2f5d62 50%,#e2f0cb 50%)" onclick="setColors('#2f5d62','#e2f0cb')"></button>Teal / Mint</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#7c4700 50%,#fff1c1 50%)" onclick="setColors('#7c4700','#fff1c1')"></button>Brown / Cream</div>
@@ -189,9 +230,8 @@
           <div class="swatch"><button style="background:linear-gradient(45deg,#9d0208 50%,#ffb4a2 50%)" onclick="setColors('#9d0208','#ffb4a2')"></button>Crimson / Coral</div>
           <div class="swatch"><button style="background:linear-gradient(45deg,#03045e 50%,#ade8f4 50%)" onclick="setColors('#03045e','#ade8f4')"></button>Deep Blue / Sky</div>
 
-          <!-- Custom color button -->
           <div class="swatch custom-color">
-            <button id="custom-color-btn" style="background:linear-gradient(45deg,#4b5563 50%,#f3f4f6 50%);border:1px dashed #9ca3af;">Custom color…</button>
+            <button id="custom-color-btn" style="background:linear-gradient(45deg,#4b5563 50%,#f3f4f6 50%);border:1px dashed #9ca3af;"></button>Custom color
             <input id="custom-color-input" type="color" hidden>
           </div>
           {% endif %}
@@ -200,7 +240,6 @@
         <button id="genBtn" onclick="onGenerateClick()">Generate</button>
       </div>
 
-      <!-- Right -->
       <div class="preview" id="preview">
         <div class="qr-box" id="result" style="min-height:320px"></div>
         <div id="downloads" class="downloads">
@@ -211,22 +250,74 @@
         </div>
       </div>
     </div>
+    <div class="hero-text-container">
+        <h1>ColorQR: Scan Confidence. Print Perfect.</h1>
+        <p>Create beautiful, scannable QR codes for your brand. Get vector SVG print quality and essential pro tools that guarantee readability.</p>
+        <div style="margin-bottom: 1rem; text-align: center;">
+            <a class="login-btn" href="/pricing" style="background: #10b981;">See Pro Features</a>
+        </div>
+    </div>
   </div>
+  <div id="customColorModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-content">
+        <h4>🎨 Custom Color Selector</h4>
 
-  <script>
+        <div class="color-picker-row">
+            <div class="color-picker-column">
+                <label for="fillColorPicker">QR Color</label>
+                <div id="fillColorContainer" class="picker-container"></div>
+                <div class="hex-input-wrapper">
+                    <span id="fillColorSwatch" class="color-swatch-indicator"></span>
+                    <input type="text" id="fillHexValue" value="#000000" maxlength="7" pattern="#[0-9A-Fa-f]{6}">
+                </div>
+            </div>
+
+            <div class="color-picker-column">
+                <label for="backColorPicker">Background Color</label>
+                <div id="backColorContainer" class="picker-container"></div>
+                <div class="hex-input-wrapper">
+                    <span id="backColorSwatch" class="color-swatch-indicator"></span>
+                    <input type="text" id="backHexValue" value="#ffffff" maxlength="7" pattern="#[0-9A-Fa-f]{6}">
+                </div>
+            </div>
+        </div>
+
+        <div id="contrast-panel" class="contrast-panel contrast-safe">
+            <div class="contrast-ratio">Ratio: <span id="contrast-ratio-value">1:1</span></div>
+            <div id="contrast-status-message" class="status-message">Requires contrast ratio ≥ 4.5:1</div>
+        </div>
+
+        <div class="modal-actions">
+            <button id="applyCustomColors" class="btn btn-primary" disabled>Apply Colors</button>
+            <button id="closeCustomColors" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+    <script>
     let selectedFill = "#000000";
     let selectedBack = "#ffffff";
     let typingTimer = null;
     let hasGenerated = false;
 
+    // --- ДОБАВЛЕННЫЕ ПЕРЕМЕННЫЕ ДЛЯ iRo.js и Modal ---
+    let fillColorPicker, backColorPicker;
+    // Константы для элементов DOM
+    const modal = document.getElementById('customColorModal');
+    const applyBtn = document.getElementById('applyCustomColors');
+    const closeBtn = document.getElementById('closeCustomColors');
+    // ---
+
     function setColors(fill, back) {
       selectedFill = fill; selectedBack = back;
+      const btn = document.getElementById('custom-color-btn');
+      if (btn) btn.style.background = `linear-gradient(45deg, ${fill} 50%, ${back} 50%)`;
       if (hasGenerated) debounceGenerate();
     }
     function getSize() {
       const el = document.querySelector('input[name="sz"]:checked');
       return el ? el.value : 'md';
     }
+    // ... (Остальные вспомогательные функции, включая buildData, generateQR, debounceGenerate, и т.д. ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ) ...
     function withProto(url) {
       const v = (url || '').trim(); if (!v) return '';
       const low = v.toLowerCase();
@@ -253,11 +344,9 @@
       const vc = document.getElementById('form-vcard'); if (vc) vc.hidden = t!=='vcard';
       const dy = document.getElementById('form-dynamic'); if (dy) dy.hidden = t!=='dynamic';
 
-      // uploader — только vCard (и только Pro по серверному флагу, сам блок рендерится условно)
       const up = document.getElementById('custom-icon-uploader');
       if (up) up.hidden = !(t === 'vcard');
 
-      // при смене типа — сбрасываем превью, но сохраняем область
       document.getElementById('result').innerHTML = '';
       document.getElementById('downloads').style.display = 'none';
     }
@@ -373,9 +462,150 @@
       typingTimer = setTimeout(()=>generateQR(), 400);
     }
 
-    // Listeners
+
+    // --- ЛОГИКА COLOR PICKER И IRO.JS ---
+
+    // --- 1. ФУНКЦИЯ ПРОВЕРКИ КОНТРАСТА ЧЕРЕЗ API ---
+    async function checkContrast(fill, back) {
+        const res = await fetch('/api/check_contrast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fill_color: fill, back_color: back })
+        });
+        const data = await res.json();
+        return data.safe;
+    }
+
+    // --- 2. ФУНКЦИЯ ОБНОВЛЕНИЯ UI МОДАЛЬНОГО ОКНА (используется IRO) ---
+    async function updateModalUI() {
+        // Проверка: пикеры могут быть не инициализированы
+        if (!fillColorPicker || !backColorPicker) return;
+
+        const fill = fillColorPicker.color.hexString;
+        const back = backColorPicker.color.hexString;
+        const contrastPanel = document.getElementById('contrast-panel');
+        const ratioValue = document.getElementById('contrast-ratio-value');
+        const statusMsg = document.getElementById('contrast-status-message');
+        const fillHexInput = document.getElementById('fillHexValue');
+        const backHexInput = document.getElementById('backHexValue');
+
+        const fillSwatch = document.getElementById('fillColorSwatch');
+        const backSwatch = document.getElementById('backColorSwatch');
+
+        fillHexInput.style.borderLeftColor = fill;
+        backHexInput.style.borderLeftColor = back;
+
+        // Обновление текстовых полей
+        fillHexInput.value = fill;
+        backHexInput.value = back;
+
+        const contrastSafe = await checkContrast(fill, back);
+
+        const luminance = (c) => {
+            const hex = c.substring(1);
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        };
+        const L1 = luminance(fill);
+        const L2 = luminance(back);
+        const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+        ratioValue.textContent = ratio.toFixed(2) + ':1';
+
+
+        fillSwatch.style.backgroundColor = fill;
+        backSwatch.style.backgroundColor = back;
+        // Обновление текстовых полей
+        fillHexInput.value = fill;
+        backHexInput.value = back;
+
+
+        if (contrastSafe) {
+            contrastPanel.classList.remove('contrast-warning');
+            contrastPanel.classList.add('contrast-safe');
+            statusMsg.textContent = 'High Contrast. Scanning Guaranteed (≥ 4.5:1).';
+            applyBtn.disabled = false;
+        } else {
+            contrastPanel.classList.remove('contrast-safe');
+            contrastPanel.classList.add('contrast-warning');
+            statusMsg.textContent = 'Low Contrast! Scanning Reliability May Be Poor (< 4.5:1).';
+            applyBtn.disabled = true;
+        }
+    }
+
+    // --- 3. Custom color trigger (Paid) ---
+    (function(){
+        const customTile = document.querySelector('.swatch.custom-color');
+        if (!customTile) return;
+
+        // 3.1. Клик на плитку "Custom color..."
+        customTile.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            // Показываем модальное окно
+            modal.style.display = 'flex';
+
+            // Инициализируем iRo.js, если еще не инициализировали
+            if (!fillColorPicker) {
+                // ПЕРВОЕ ИНИЦИАЛИЗАЦИЯ: Убеждаемся, что пикеры создаются внутри контейнеров
+                fillColorPicker = new iro.ColorPicker('#fillColorContainer', {
+                    width: 180,
+                    color: selectedFill,
+                    layoutDirection: 'vertical'
+                });
+                backColorPicker = new iro.ColorPicker('#backColorContainer', {
+                    width: 180,
+                    color: selectedBack,
+                    layoutDirection: 'vertical'
+                });
+
+                // --- ПРИВЯЗКА СЛУШАТЕЛЕЙ IRO.JS (Один раз после создания) ---
+                fillColorPicker.on('color:change', updateModalUI);
+                backColorPicker.on('color:change', updateModalUI);
+                // -------------------------------------------------------------
+
+                // Слушатели для ввода HEX (обновление пикера)
+                document.getElementById('fillHexValue').addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (/^#?([0-9A-Fa-f]{6})$/.test(val)) fillColorPicker.color.set(val);
+                });
+                document.getElementById('backHexValue').addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (/^#?([0-9A-Fa-f]{6})$/.test(val)) backColorPicker.color.set(val);
+                });
+
+                updateModalUI();
+            } else {
+                // Если пикеры уже есть, просто обновляем их текущими глобальными цветами
+                fillColorPicker.color.set(selectedFill);
+                backColorPicker.color.set(selectedBack);
+                updateModalUI();
+            }
+        });
+
+        // 3.2. ЗАКРЫТИЕ И ПРИМЕНЕНИЕ (Modal Listeners)
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        applyBtn.addEventListener('click', () => {
+            const finalFill = fillColorPicker.color.hexString;
+            const finalBack = backColorPicker.color.hexString;
+
+            setColors(finalFill, finalBack);
+            modal.style.display = 'none';
+        });
+
+        // Инициализация плитки (чтобы она показывала правильный цвет при загрузке)
+        const initialFill = selectedFill;
+        const initialBack = selectedBack;
+        setColors(initialFill, initialBack);
+    })();
+
+    // Listeners (Ваша старая логика)
     document.querySelectorAll('input[name="qrtype"]').forEach(r => {
-      r.addEventListener('change', () => { switchForms(); /* не автогенерим */ });
+      r.addEventListener('change', () => { switchForms(); });
     });
     document.getElementById('link').addEventListener('input', debounceGenerate);
     const ssid = document.getElementById('wifi-ssid'); if (ssid) ssid.addEventListener('input', debounceGenerate);
@@ -384,7 +614,7 @@
     const ptxt = document.getElementById('plain-text'); if (ptxt) ptxt.addEventListener('input', debounceGenerate);
     const dyn  = document.getElementById('dyn-url'); if (dyn) dyn.addEventListener('input', debounceGenerate);
 
-    // Custom icon upload (Pro only + vCard only)
+    // Custom icon upload (Ваша логика для загрузки иконок)
     (function(){
       const drop = document.getElementById('icon-drop');
       const input = document.getElementById('icon-file');
@@ -449,25 +679,9 @@
       }
     })();
 
-    // Custom color trigger (Paid)
-    (function(){
-      const btn = document.getElementById('custom-color-btn');
-      const inp = document.getElementById('custom-color-input');
-      if (!btn || !inp) return;
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault(); inp.click();
-      });
-      inp.addEventListener('input', ()=>{
-        // пользователь выбрал собственный цвет "fill"; фоновый оставим светлым
-        const fill = inp.value || '#111111';
-        const back = selectedBack; // можно смешивать для органики, но оставим как есть
-        setColors(fill, back);
-        btn.style.background = `linear-gradient(45deg, ${fill} 50%, ${back} 50%)`;
-      });
-    })();
 
     // Init
     switchForms();
-  </script>
+</script>
 </body>
 </html>
