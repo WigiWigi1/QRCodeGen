@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
   <meta charset="UTF-8">
   <title>Pricing — ColorQR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,13 +10,43 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" rel="stylesheet">
   <link rel="canonical" href="https://colorqr.app/" />
 
-  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://js.stripe.com/v3"></script>
+
   <style>
-    /* Уменьшение шрифта для списка преимуществ */
+    /* Чуть уменьшаем шрифт в списке фич (если надо) */
     .feature-list li {
-        font-size: 0.95rem;
-        margin-bottom: 0.65rem;
-        line-height: 1.3;
+      font-size: 0.95rem;
+      margin-bottom: 0.65rem;
+      line-height: 1.3;
+    }
+
+    /* Заголовок тарифа + бейдж «Current plan» */
+    .plan-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+    }
+    .plan-label-current {
+      font-size: .75rem;
+      padding: .2rem .6rem;
+      border-radius: 9999px;
+      background: #ecfdf5;
+      color: #166534;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .plan-cta-note {
+      margin-top: auto;
+      font-size: .9rem;
+      color: #4b5563;
+    }
+    .plan-cta-note strong {
+      font-weight: 600;
+    }
+    .plan-cta-note.plan-cta-active {
+      color: #15803d;
     }
   </style>
 </head>
@@ -52,6 +81,7 @@
 </nav>
 
 <div class="price-container">
+
     {% if not user %}
     <div class="price-auth-block">
         <div class="icon-header">
@@ -64,124 +94,175 @@
     </div>
     {% endif %}
 
+    {% set current_plan = 'pro' if is_pro else ('one_time' if is_one_time else 'free') %}
+
     <div class="card wide">
-        <h2 style="text-align:center;margin:.2rem 0 1rem">Our pricing</h2>
+      <h2 style="text-align:center;margin:.2rem 0 1rem">Our pricing</h2>
 
-        <div class="pricing-grid">
+      <!-- адаптивная сетка тарифов; CSS для .pricing-grid уже есть в style.css -->
+      <div class="pricing-grid">
 
-            <div class="plan" style="border:1px solid #e5e7eb;border-radius:16px;padding:1.5rem;display:flex;flex-direction:column; width: 100%;">
-                <div class="plan-header">
-                    <h3 style="font-size:1.5rem;font-weight:700;">Free</h3>
-                    <p style="color:#6b7280;">For basic, personal use and simple links.</p>
-                    <div style="font-size:2.5rem;font-weight:800;">€0</div>
-                </div>
-
-                <ul class="feature-list" style="flex-grow:1; width: 100%;">
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> 3 Data Types (URL, Wi-Fi, Text)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> 4 Standard Color Palettes</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> JPG Export (Standard Quality)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Small (256px) & Medium (512px) Sizes</li>
-                    <li style="color:#ef4444;font-weight:600;"><span style="color:#ef4444;">❌</span> <strong>Watermark on all Codes</strong></li>
-                </ul>
-                <a href="/" class="login-btn" style="display:block;margin-top:auto;text-align:center;background:#e5e7eb;color:#374151;">Start Generating for Free</a>
+        <!-- FREE -->
+        <div class="plan">
+          <div class="plan-header">
+            <div class="plan-header-top">
+              <h3 style="font-size:1.5rem;font-weight:700;">Free</h3>
+              {% if current_plan == 'free' %}
+                <span class="plan-label-current">Current plan</span>
+              {% endif %}
             </div>
+            <p style="color:#6b7280;">For basic, personal use and simple links.</p>
+            <div style="font-size:2.5rem;font-weight:800;">€0</div>
+          </div>
 
-            <div class="plan" style="border:3px solid #3b82f6;border-radius:16px;padding:1.5rem;background:#eff6ff;position:relative;display:flex;flex-direction:column; width: 100%;">
-                <div class="plan-header">
-                    <h3 style="font-size:1.5rem;font-weight:700;">One-Time Access 🌟</h3>
-                    <p style="color:#3b82f6;font-weight:600;">Best for a single, high-quality campaign or event.</p>
-                    <div style="font-size:2.5rem;font-weight:800;">€1.99</div>
-                </div>
+          <ul class="feature-list">
+            <li><span style="color:#10b981;font-weight:600;">✅</span> 3 Data Types (URL, Wi-Fi, Text)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> 4 Standard Color Palettes</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> JPG Export (Standard Quality)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Small (256px) & Medium (512px) Sizes</li>
+            <li style="color:#ef4444;font-weight:600;"><span style="color:#ef4444;">❌</span> <strong>Watermark on all Codes</strong></li>
+          </ul>
 
-                <ul class="feature-list" style="flex-grow:1; width: 100%;">
-                    <li style="font-weight:700;color:#f59e0b;"><span style="color:#f59e0b;">🔥</span> No Watermark (All codes this session)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Full access to 20+ Palettes</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Custom Color Picker (with Guaranteed Contrast)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> HQ JPG Export (up to 1024px)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> All Sizes up to Large </li>
-                    <li style="color:#9ca3af;"><span style="color:#9ca3af;">—</span> No Dynamic QR or SVG Export</li>
-                </ul>
-
-                {# Кнопка, управляемая JS #}
-                <button id="checkout-button-ot" class="login-btn" style="display:block;margin-top:auto;text-align:center;background:#3b82f6;color:white;">Unlock Now for €1.99</button>
-            </div>
-
-            <div class="plan" style="border:3px solid #10b981;border-radius:16px;padding:1.5rem;background:#ecfdf5;position:relative;display:flex;flex-direction:column; width: 100%;">
-                <div class="plan-header">
-                    <h3 style="font-size:1.5rem;font-weight:700;">Pro (The Ultimate Toolkit)</h3>
-                    <p style="color:#10b981;font-weight:600;">For agencies, businesses, and professional design.</p>
-                    <div style="font-size:2.5rem;font-weight:800;">€9.99/mo</div>
-                </div>
-
-                <ul class="feature-list" style="flex-grow:1; width: 100%;">
-                    <li style="font-weight:700;color:#10b981;"><span style="color:#f59e0b;">🔥</span> Everything in One-Time, Permanent Access</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Dynamic QR Codes (Edit target URL anytime)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Vector SVG Export (Perfect for high-res printing)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Center Logo/Icon Integration (Custom PNG)</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> All 5+ Data Types including vCard</li>
-                    <li><span style="color:#10b981;font-weight:600;">✅</span> Highest Quality & Contrast Guaranteed</li>
-                </ul>
-                <a href="/login" class="login-btn" style="display:block;margin-top:auto;text-align:center;background:#10b981;color:white;">Subscribe Now</a>
-            </div>
+          <div class="plan-cta">
+            <a href="/" class="login-btn secondary" style="display:block;text-align:center;background:#e5e7eb;color:#374151;">
+              Start Generating for Free
+            </a>
+          </div>
         </div>
+
+        <!-- ONE-TIME -->
+        <div class="plan plan-onetime" style="border:3px solid #3b82f6;border-radius:16px;padding:1.5rem;background:#eff6ff;position:relative;display:flex;flex-direction:column;">
+          <div class="plan-header">
+            <div class="plan-header-top">
+              <h3 style="font-size:1.5rem;font-weight:700;">One-Time Access 🌟</h3>
+              {% if current_plan == 'one_time' %}
+                <span class="plan-label-current">Current plan</span>
+              {% elif current_plan == 'pro' %}
+                <span class="plan-label-current">Included in Pro</span>
+              {% endif %}
+            </div>
+            <p style="color:#3b82f6;font-weight:600;">Best for a single, high-quality campaign or event.</p>
+            <div style="font-size:2.5rem;font-weight:800;">€{{ one_time_price|default(1.99) }}</div>
+          </div>
+
+          <ul class="feature-list">
+            <li style="font-weight:700;color:#f59e0b;">
+              <span style="color:#f59e0b;">🔥</span> No Watermark (All codes this session)
+            </li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Full access to 20+ Palettes</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Custom Color Picker (with Guaranteed Contrast)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> HQ JPG Export (up to 1024px)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> All Sizes up to Large </li>
+            <li style="color:#9ca3af;"><span style="color:#9ca3af;">—</span> No Dynamic QR or SVG Export</li>
+          </ul>
+
+          {% if is_pro %}
+            <div class="plan-cta-note">
+              <strong>Already included</strong> in your Pro subscription.
+            </div>
+          {% elif is_one_time %}
+            <div class="plan-cta-note plan-cta-active">
+              <strong>This is your current plan.</strong>
+            </div>
+          {% else %}
+            <div class="plan-cta">
+              <!-- Кнопка, управляемая JS + Stripe -->
+              <button id="checkout-button-ot"
+                      class="login-btn"
+                      style="display:block;margin-top:auto;text-align:center;background:#3b82f6;color:white;">
+                Unlock Now for €{{ one_time_price|default(1.99) }}
+              </button>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- PRO -->
+        <div class="plan plan-pro" style="border:3px solid #10b981;border-radius:16px;padding:1.5rem;background:#ecfdf5;position:relative;display:flex;flex-direction:column;">
+          <div class="plan-header">
+            <div class="plan-header-top">
+              <h3 style="font-size:1.5rem;font-weight:700;">Pro (The Ultimate Toolkit)</h3>
+              {% if current_plan == 'pro' %}
+                <span class="plan-label-current">Current plan</span>
+              {% endif %}
+            </div>
+            <p style="color:#10b981;font-weight:600;">For agencies, businesses, and professional design.</p>
+            <div style="font-size:2.5rem;font-weight:800;">€9.99/mo</div>
+          </div>
+
+          <ul class="feature-list">
+            <li style="font-weight:700;color:#10b981;">
+              <span style="color:#f59e0b;">🔥</span> Everything in One-Time, Permanent Access
+            </li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Dynamic QR Codes (Edit target URL anytime)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Vector SVG Export (Perfect for high-res printing)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Center Logo/Icon Integration (Custom PNG)</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> All 5+ Data Types including vCard</li>
+            <li><span style="color:#10b981;font-weight:600;">✅</span> Highest Quality & Contrast Guaranteed</li>
+          </ul>
+
+          {% if is_pro %}
+            <div class="plan-cta-note plan-cta-active">
+              <strong>This is your current plan.</strong>
+            </div>
+          {% else %}
+            <div class="plan-cta">
+              <a href="/login"
+                 class="login-btn"
+                 style="display:block;margin-top:auto;text-align:center;background:#10b981;color:white;">
+                {% if is_one_time %}
+                  Upgrade to Pro
+                {% else %}
+                  Subscribe Now
+                {% endif %}
+              </a>
+            </div>
+          {% endif %}
+        </div>
+
+      </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // ID кнопки, которую мы используем для запуска Stripe
-        const checkoutButton = document.getElementById('checkout-button-ot');
+  document.addEventListener('DOMContentLoaded', function() {
+      const checkoutButton = document.getElementById('checkout-button-ot');
+      const stripe = Stripe('{{ stripe_pub_key }}');
+      const isUserLoggedIn = {{ 'true' if user else 'false' }};
 
-        // 1. Инициализация Stripe (используем публичный ключ pk_test_...)
-        // Ключ STRIPE_PUBLISHABLE_KEY передается из Flask через os.environ.get
-        const stripe = Stripe('{{ stripe_pub_key }}');
+      if (checkoutButton) {
+          checkoutButton.addEventListener('click', function(event) {
+              if (!isUserLoggedIn) {
+                  alert("Authentication Required: Please log in via Google to proceed. This is how we securely store your purchase and guarantee your premium access won't be lost.");
+                  window.location.href = '{{ url_for("login", next=url_for("pricing")) }}';
+                  return;
+              }
 
-        // Проверяем, залогинен ли пользователь (переменная user передается из Flask)
-        const isUserLoggedIn = {{ 'true' if user else 'false' }};
-
-
-        if (checkoutButton) {
-            checkoutButton.addEventListener('click', function(event) {
-
-                if (!isUserLoggedIn) {
-                    // ЕСЛИ НЕ АВТОРИЗОВАН: Предупреждение и перенаправление на логин
-                    alert("Authentication Required: Please log in via Google to proceed. This is how we securely store your purchase and guarantee your premium access won't be lost.");
-                    // Перенаправляем на /login, чтобы потом вернуться на /pricing
-                    window.location.href = '{{ url_for("login", next=url_for("pricing")) }}';
-                    return; // Останавливаем выполнение
-                }
-
-                // ЕСЛИ АВТОРИЗОВАН: Запускаем Stripe Checkout
-
-                // 1. Запрос к вашему Flask-бэкенду для создания сессии
-                fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    // Вы можете передать email пользователя здесь, но бэкенд может взять его из сессии
-                    body: JSON.stringify({})
-                })
-                .then(function(response) {
-                    // Проверяем, что ответ OK, иначе парсим ошибку
-                    if (!response.ok) {
-                        return response.json().then(data => { throw new Error(data.error || 'Unknown error') });
-                    }
-                    return response.json();
-                })
-                .then(function(session) {
-                    if (session.error) {
-                        alert('Error: ' + session.error);
-                        return;
-                    }
-                    // 2. Получаем session ID и перенаправляем на страницу оплаты Stripe
-                    return stripe.redirectToCheckout({ sessionId: session.sessionId });
-                })
-                .catch(function(error) {
-                    console.error('Error during checkout:', error);
-                    alert('An unexpected error with session has occured. Please try again. ' + error.message);
-                });
-            });
-        }
-    });
+              fetch('/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+              })
+              .then(function(response) {
+                  if (!response.ok) {
+                      return response.json().then(data => { throw new Error(data.error || 'Unknown error') });
+                  }
+                  return response.json();
+              })
+              .then(function(session) {
+                  if (session.error) {
+                      alert('Error: ' + session.error);
+                      return;
+                  }
+                  return stripe.redirectToCheckout({ sessionId: session.sessionId });
+              })
+              .catch(function(error) {
+                  console.error('Error during checkout:', error);
+                  alert('Произошла непредвиденная ошибка при создании сессии. Пожалуйста, попробуйте снова. ' + error.message);
+              });
+          });
+      }
+  });
 </script>
+
 </body>
 </html>

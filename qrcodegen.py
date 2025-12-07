@@ -105,8 +105,23 @@ def get_or_create_user(email: str):
     return user_status
 
 def is_pro() -> bool:
+    """
+    Pro-доступ:
+    - реальный Pro по списку PREMIUM_EMAILS
+    - либо dev-флаг в сессии (unlock-pro)
+    """
     u = current_user()
-    return bool(u and u.get("email", "").lower() in PREMIUM_EMAILS)
+    email = (u or {}).get("email", "").lower()
+
+    # Реальный Pro через env-переменную PREMIUM_EMAILS
+    if email and email in PREMIUM_EMAILS:
+        return True
+
+    # DEV-режим: временный Pro до logout/lock-pro
+    if session.get("pro_debug"):
+        return True
+
+    return False
 
 
 def is_one_time() -> bool:
@@ -660,6 +675,19 @@ def unlock_one_time():
 @app.route("/lock-one-time")
 def lock_one_time():
     session.pop("one_time", None)
+    return redirect(url_for("pricing"))
+
+@app.route("/unlock-pro")
+def unlock_pro():
+    """Включить Pro в текущей сессии (dev-режим)."""
+    session["pro_debug"] = True
+    return redirect(url_for("pricing"))
+
+
+@app.route("/lock-pro")
+def lock_pro():
+    """Выключить dev-Pro в текущей сессии."""
+    session.pop("pro_debug", None)
     return redirect(url_for("pricing"))
 
 
