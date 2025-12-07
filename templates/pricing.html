@@ -4,6 +4,7 @@
 
   <meta charset="UTF-8">
   <title>Pricing — ColorQR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Create beautiful, scannable QR codes for your brand. Get vector SVG print quality, guaranteed contrast, dynamic QR codes, and logo embedding with ColorQR." />
   <link rel="icon" type="image/png" href="/static/favicon.png"/>
   <link rel="stylesheet" href="/static/style.css">
@@ -66,7 +67,7 @@
     <div class="card wide">
         <h2 style="text-align:center;margin:.2rem 0 1rem">Our pricing</h2>
 
-        <div style="display:grid;gap:2rem;grid-template-columns:repeat(3,1fr);margin:3rem auto;">
+        <div class="pricing-grid">
 
             <div class="plan" style="border:1px solid #e5e7eb;border-radius:16px;padding:1.5rem;display:flex;flex-direction:column; width: 100%;">
                 <div class="plan-header">
@@ -176,17 +177,11 @@
                 })
                 .catch(function(error) {
                     console.error('Error during checkout:', error);
-                    alert('Произошла непредвиденная ошибка при создании сессии. Пожалуйста, попробуйте снова. ' + error.message);
+                    alert('An unexpected error with session has occured. Please try again. ' + error.message);
                 });
             });
         }
     });
 </script>
-
-<style>
-@media (max-width: 800px){
-  .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr; }
-}
-</style>
 </body>
 </html>
