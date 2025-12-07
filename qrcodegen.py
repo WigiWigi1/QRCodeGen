@@ -4,6 +4,7 @@ import uuid
 import base64
 from io import BytesIO
 from datetime import datetime
+from urllib.parse import urlparse
 import stripe
 
 from flask import (
@@ -37,10 +38,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 # --- КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ (SQLite) ---
 DB_PATH = os.path.join(DATA_DIR, "site.db")
-# Устанавливаем путь к файлу SQLite
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app) # Создаем объект DB
+db = SQLAlchemy(app)
 # ----------------------------------------
 
 DYN_PATH = os.environ.get("DYN_PATH", os.path.join(DATA_DIR, "dynamic.json"))
@@ -82,16 +82,17 @@ class UserStatus(db.Model):
     def __repr__(self):
         return f"<UserStatus {self.email}: {'Paid' if self.has_one_time_access else 'Free'}>"
 
+
 # ---------------------- HELPERS ----------------------
 def current_user():
     return session.get("user")
+
 
 def get_or_create_user(email: str):
     """
     Находит пользователя по email в DB или создает нового.
     """
     email_lower = email.lower()
-    # Используем безопасный метод поиска для SQLAlchemy 2.0
     user_status = db.session.execute(
         db.select(UserStatus).filter_by(email=email_lower)
     ).scalar_one_or_none()
@@ -99,10 +100,9 @@ def get_or_create_user(email: str):
     if user_status is None:
         user_status = UserStatus(email=email_lower, has_one_time_access=False)
         db.session.add(user_status)
-        # Commit не требуется здесь, если его вызывает auth_callback/payment_success
-        # Но для безопасности добавим
         db.session.commit()
     return user_status
+
 
 def is_pro() -> bool:
     """
@@ -113,11 +113,9 @@ def is_pro() -> bool:
     u = current_user()
     email = (u or {}).get("email", "").lower()
 
-    # Реальный Pro через env-переменную PREMIUM_EMAILS
     if email and email in PREMIUM_EMAILS:
         return True
 
-    # DEV-режим: временный Pro до logout/lock-pro
     if session.get("pro_debug"):
         return True
 
@@ -141,6 +139,17 @@ def normalize_url(link: str) -> str:
     if low.startswith("http://") or low.startswith("https://"):
         return v
     return "https://" + v
+
+
+def _normalize_hex(h: str) -> str:
+    h = (h or "").strip()
+    if not h:
+        return "#000000"
+    if not h.startswith("#"):
+        h = "#" + h
+    if len(h) == 4:
+        h = "#" + "".join(c * 2 for c in h[1:])
+    return h.lower()
 
 
 def _hex_to_rgb(h: str):
@@ -233,10 +242,13 @@ def _draw_badge(base_img: Image.Image, box, radius: int, fill_hex: str, back_hex
     return base
 
 
+SAFE_ICON_SCALE = 0.18  # было 0.24 – уменьшили, чтобы логотип не лез к краям
+
+
 def _overlay_wifi_png(img: Image.Image, fill_hex: str, back_hex: str) -> Image.Image:
     img = img.convert("RGBA")
     W, H = img.size
-    side = int(min(W, H) * 0.24)
+    side = int(min(W, H) * SAFE_ICON_SCALE)
     half = side // 2
     cx, cy = W // 2, H // 2
     radius = int(side * 0.24)
@@ -248,7 +260,7 @@ def _overlay_wifi_png(img: Image.Image, fill_hex: str, back_hex: str) -> Image.I
     if os.path.exists(path):
         base_png = Image.open(path).convert("RGBA")
         colored_png = _tint_icon_png_to_color(base_png, _hex_to_rgb(fill_hex))
-        target = int(side * 1.1)
+        target = side  # без 1.1 – логотип строго в бейдже
         colored_png.thumbnail((target, target), Image.LANCZOS)
         iw, ih = colored_png.size
         img.alpha_composite(colored_png, (cx - iw // 2, cy - ih // 2))
@@ -258,7 +270,7 @@ def _overlay_wifi_png(img: Image.Image, fill_hex: str, back_hex: str) -> Image.I
 def _overlay_user_png(img: Image.Image, fill_hex: str, back_hex: str, custom_icon_path: str | None) -> Image.Image:
     img = img.convert("RGBA")
     W, H = img.size
-    side = int(min(W, H) * 0.24)
+    side = int(min(W, H) * SAFE_ICON_SCALE)
     half = side // 2
     cx, cy = W // 2, H // 2
     radius = int(side * 0.24)
@@ -279,11 +291,12 @@ def _overlay_user_png(img: Image.Image, fill_hex: str, back_hex: str, custom_ico
 
     if icon_img is not None:
         icon_img = _tint_icon_png_to_color(icon_img, _hex_to_rgb(fill_hex))
-        target = int(side * 1.1)
+        target = side  # без 1.1
         icon_img.thumbnail((target, target), Image.LANCZOS)
         iw, ih = icon_img.size
         img.alpha_composite(icon_img, (cx - iw // 2, cy - ih // 2))
     return img
+
 
 def _load_ttf(px: int) -> ImageFont.FreeTypeFont | None:
     candidates: list[str] = []
@@ -422,6 +435,13 @@ def _save_jpg_from_rgba(pil_rgba: Image.Image, quality: int = 90) -> bytes:
 
 
 def _gen_svg_bytes(data: str, fill_color: str, back_color: str) -> bytes:
+    """
+    Генерация SVG с нужной палитрой.
+    Если библиотека qrcode игнорирует цвета, мы перекрашиваем SVG постфактум.
+    """
+    fill_color = _normalize_hex(fill_color)
+    back_color = _normalize_hex(back_color)
+
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -434,7 +454,42 @@ def _gen_svg_bytes(data: str, fill_color: str, back_color: str) -> bytes:
     img = qr.make_image(fill_color=fill_color, back_color=back_color)
     out = BytesIO()
     img.save(out)
-    return out.getvalue()
+
+    svg_text = out.getvalue().decode("utf-8", errors="ignore")
+
+    # На случай, если библиотека всё равно оставила дефолтные цвета
+    svg_text = svg_text.replace('fill="#000000"', f'fill="{fill_color}"')
+    svg_text = svg_text.replace('fill="#ffffff"', f'fill="{back_color}"')
+
+    return svg_text.encode("utf-8")
+
+
+def _build_download_name(data_type: str, raw_data: str) -> str:
+    """
+    Строим красивое имя файла:
+    - для URL/dynamic: домен (example.com-YYYYMMDD-HHMMSS)
+    - для Wi-Fi/vCard: понятный префикс
+    """
+    base = "colorqr"
+
+    if data_type in ("url", "dynamic"):
+        try:
+            parsed = urlparse(raw_data)
+            host = parsed.netloc or ""
+            host = host.replace("www.", "")
+            if host:
+                base = host.split(":")[0]
+        except Exception:
+            pass
+    elif data_type == "wifi":
+        base = "wifi-qr"
+    elif data_type == "vcard":
+        base = "vcard-qr"
+    else:
+        base = f"{data_type}-qr"
+
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    return f"{base}-{ts}"
 
 
 # ---------------------- CONTENT (FAQ/Blog) ----------------------
@@ -485,6 +540,7 @@ def tpl_args(active):
 
 @app.route("/")
 def home():
+    session.pop("custom_icon_path", None)
     return render_template("index.html", **tpl_args("home"))
 
 
@@ -562,16 +618,12 @@ def auth_callback():
         "picture": userinfo.get("picture"),
     }
 
-    # --- КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: СЧИТЫВАЕМ СТАТУС ИЗ DB И ЗАПИСЫВАЕМ В СЕССИЮ ---
-    # Проверяем и создаем пользователя в DB, если он существует
     if user_email:
         user_status = get_or_create_user(user_email)
-        # Если в DB есть платный доступ, активируем временный флаг в сессии
         if user_status.has_one_time_access:
             session["one_time"] = True
         else:
-            session["one_time"] = False  # Гарантируем, что флаг сброшен, если пользователь не платил
-    # --------------------------------------------------------------------------
+            session["one_time"] = False
 
     next_url = session.pop("next_url", url_for("home"))
     if next_url == url_for("pricing"):
@@ -633,13 +685,12 @@ def payment_success():
 
         if stripe_session.payment_status == "paid":
 
-            session["one_time"] = True  # Активируем временный флаг
+            session["one_time"] = True
 
             user_email = stripe_session.get("customer_email")
             if not user_email and session.get("user"):
                 user_email = session["user"].get("email")
 
-            # --- КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: ЗАПИСЫВАЕМ СТАТУС В DB ---
             if user_email:
                 user_status = get_or_create_user(user_email)
                 user_status.has_one_time_access = True
@@ -648,7 +699,6 @@ def payment_success():
             else:
                 flash(
                     "One-Time Access activated for this session. Please log in to permanently link access to your Google account.")
-            # -----------------------------------------------------
 
             return render_template("payment_success.html", **tpl_args("pricing"))
         else:
@@ -677,6 +727,7 @@ def lock_one_time():
     session.pop("one_time", None)
     return redirect(url_for("pricing"))
 
+
 @app.route("/unlock-pro")
 def unlock_pro():
     """Включить Pro в текущей сессии (dev-режим)."""
@@ -697,10 +748,7 @@ def check_contrast_api():
     fill_color = payload.get("fill_color", "#000000")
     back_color = payload.get("back_color", "#ffffff")
 
-    # Используем вашу существующую функцию для проверки WCAG AA (min 4.5)
     is_safe = _check_contrast(fill_color, back_color, min_ratio=4.5)
-
-    # Дополнительно можно вернуть и сам коэффициент, если нужно
     return jsonify({"safe": is_safe})
 
 
@@ -744,6 +792,18 @@ def upload_icon():
     return jsonify({"ok": True, "token": token})
 
 
+@app.route("/clear_icon", methods=["POST"])
+def clear_icon():
+    """
+    Сбросить выбранную иконку (логотип) из сессии.
+    Используется, когда пользователь нажимает «Remove icon».
+    """
+    if not is_pro():
+        return jsonify({"error": "Pro required"}), 403
+
+    session.pop("custom_icon_path", None)
+    return jsonify({"ok": True})
+
 # ---------------------- DYNAMIC QR (Pro) ----------------------
 @app.route("/dynamic/create", methods=["POST"])
 def dynamic_create():
@@ -757,10 +817,9 @@ def dynamic_create():
     with open(DYN_PATH, "r+", encoding="utf-8") as f:
         data = json.load(f)
         data[id_] = {"url": target, "created": datetime.utcnow().isoformat()}
-        f.seek(0);
-        json.dump(data, f);
+        f.seek(0)
+        json.dump(data, f)
         f.truncate()
-    # Возвращаем короткую ссылку
     short = url_for("dynamic_redirect", id=id_, _external=True)
     return jsonify({"id": id_, "short": short})
 
@@ -782,7 +841,6 @@ def generate_qr():
     data_type = (payload.get("data_type") or "url").lower()  # url | wifi | text | vcard | dynamic
     raw = (payload.get("data") or "").strip()
 
-    # доступность типов
     if data_type == "vcard" and not is_pro():
         return jsonify({"error": "vCard available in Pro"}), 403
     if data_type == "dynamic" and not is_pro():
@@ -796,43 +854,45 @@ def generate_qr():
 
     fill_color = payload.get("fill_color", "#000000")
     back_color = payload.get("back_color", "#ffffff")
+
     size_key = payload.get("size", "md")  # sm | md | lg
-    # размеры: Free → sm/md; Paid → +lg
     if size_key == "lg" and not is_paid():
         size_key = "md"
 
-    # --- CRITICAL FIX 1: Проверка контрастности для платных тарифов ---
-    # Проверка нужна только там, где пользователь мог выбрать кастомный цвет (т.е. Paid).
     if is_paid():
-        # Рекомендованный минимум 4.5:1 для обеспечения сканируемости.
         if not _check_contrast(fill_color, back_color, min_ratio=4.5):
             return jsonify({
                 "error": "Color contrast is too low (min 4.5:1 required). Please choose a darker foreground or lighter background for reliable scanning."
             }), 400
-    # ------------------------------------------------------------------
 
     px = {"sm": 256, "md": 512, "lg": 1024}.get(size_key, 512)
     box = 10 if px >= 512 else 8
 
-    # Make QR (H correction)
-    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=box, border=4)
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=box,
+        border=4
+    )
     qr.add_data(raw)
     qr.make(fit=True)
-    img: PilImage = qr.make_image(fill_color=fill_color, back_color=back_color).convert("RGBA")
+    img: PilImage = qr.make_image(
+        fill_color=fill_color,
+        back_color=back_color
+    ).convert("RGBA")
 
-    # Иконки:
     if data_type == "wifi":
         img = _overlay_wifi_png(img, fill_hex=fill_color, back_hex=back_color)
     elif data_type == "vcard" and is_pro():
-        img = _overlay_user_png(img, fill_hex=fill_color, back_hex=back_color,
-                                custom_icon_path=session.get("custom_icon_path"))
+        img = _overlay_user_png(
+            img,
+            fill_hex=fill_color,
+            back_hex=back_color,
+            custom_icon_path=session.get("custom_icon_path")
+        )
 
-    # Водяной знак для Free
-
-    # финальный размер
     img = img.resize((px, px), Image.LANCZOS)
 
-    # watermark только для Free
     if not is_paid():
         img = _add_watermark_border(
             img,
@@ -844,39 +904,35 @@ def generate_qr():
             gap_scale=0.05
         )
 
-    # без повторного resize!
-
-    # Сохранение JPG
     uid = str(uuid.uuid4())
-    jpg_bytes = _save_jpg_from_rgba(img, quality=(95 if is_one_time() or is_pro() else 88))
-
-    # Сохранение JPG (для превью/скачивания)
-    uid = str(uuid.uuid4())
-    jpg_bytes = _save_jpg_from_rgba(img, quality=(95 if is_one_time() or is_pro() else 88))
-    with open(os.path.join(DATA_DIR, f"{uid}.jpg"), "wb") as f:
+    jpg_bytes = _save_jpg_from_rgba(
+        img,
+        quality=(95 if is_one_time() or is_pro() else 88)
+    )
+    jpg_path = os.path.join(DATA_DIR, f"{uid}.jpg")
+    with open(jpg_path, "wb") as f:
         f.write(jpg_bytes)
 
     svg_available = False
-    # SVG только для Pro
     if is_pro():
         try:
             svg_bytes = _gen_svg_bytes(raw, fill_color, back_color)
-            with open(os.path.join(DATA_DIR, f"{uid}.svg"), "wb") as f:
+            svg_path = os.path.join(DATA_DIR, f"{uid}.svg")
+            with open(svg_path, "wb") as f:
                 f.write(svg_bytes)
-                svg_available = True  # SVG успешно сгенерирован
-        except Exception:
-            pass
+            svg_available = True
+        except Exception as e:
+            app.logger.error(f"SVG generation failed: {e}")
 
     b64 = base64.b64encode(jpg_bytes).decode("utf-8")
 
-    # --- FIX: Сохраняем имя файла для скачивания ---
-    download_name = f"QR_{data_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    download_name = _build_download_name(data_type, raw)
     session["download_name"] = download_name
 
     return jsonify({
         "qr_code": b64,
         "id": uid,
-        "svg_available": svg_available  # Фронтенд увидит, что можно скачать SVG
+        "svg_available": svg_available
     })
 
 
@@ -887,12 +943,19 @@ def download_jpg():
     if not file_id:
         return "Missing id", 400
 
-    # --- FIX: Используем имя из сессии, если есть ---
-    download_name = session.pop("download_name", "qrcode")
+    # раньше было pop → имя терялось для второго скачивания
+    download_name = session.get("download_name", "qrcode")
+
     path = os.path.join(DATA_DIR, f"{file_id}.jpg")
     if not os.path.exists(path):
         return "Not found", 404
-    return send_file(path, as_attachment=True, download_name=f"{download_name}.jpg", mimetype="image/jpeg")
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=f"{download_name}.jpg",
+        mimetype="image/jpeg"
+    )
+
 
 
 @app.route("/download_svg")
@@ -903,15 +966,20 @@ def download_svg():
     if not file_id:
         return "Missing id", 400
 
-    # --- FIX: Используем имя из сессии, если есть ---
-    download_name = session.pop("download_name", "qrcode")
+    # тоже get вместо pop
+    download_name = session.get("download_name", "qrcode")
 
     path = os.path.join(DATA_DIR, f"{file_id}.svg")
     if not os.path.exists(path):
         return "Not found", 404
 
-    # Используем новое имя
-    return send_file(path, as_attachment=True, download_name=f"{download_name}.svg", mimetype="image/svg+xml")
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=f"{download_name}.svg",
+        mimetype="image/svg+xml"
+    )
+
 
 
 # ---------------------- DEV ENTRY ----------------------
@@ -927,7 +995,7 @@ def whoami():
 
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()  # <-- Эта строка создает таблицу user_status
+        db.create_all()
     host = "127.0.0.1"
     port = int(os.environ.get("PORT", 5000))
     print(f"➡  Local server: http://{host}:{port}  (Ctrl+C to stop)")

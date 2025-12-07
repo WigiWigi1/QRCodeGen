@@ -833,6 +833,20 @@ textarea {
   padding: 0 14px 24px;
 }
 
+/* Контейнер для главной страницы с генератором */
+.home-container {
+  max-width: var(--card-wide);   /* шире, как и карточка .card.wide */
+  margin: 0 auto 20px;
+  padding: 0 14px 24px;
+}
+
+@media (max-width: 600px) {
+  .home-container {
+    max-width: 100%;
+    padding: 0 10px 18px;
+  }
+}
+
 .page-card {
   background: #fff;
   border-radius: 14px;
@@ -965,7 +979,7 @@ textarea {
 .pricing-grid {
   display: grid;
   gap: 2rem;
-  margin: 3rem auto;
+  margin: 3rem 0 2rem;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
@@ -991,3 +1005,31 @@ textarea {
     font-size: 1rem;
   }
 }
+
+#clear-icon-btn {
+  margin-top: 8px;
+  display: none;                /* остаётся скрытой по умолчанию */
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;         /* пилюля, как у табов */
+  border: 1px solid #fecaca;    /* светло-красная рамка */
+  background: #fef2f2;          /* очень светлый красный фон */
+  color: #b91c1c;               /* более тёмный красный текст */
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+#clear-icon-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+@media (max-width: 600px) {
+  .card {
+    border-radius: 10px;
+    padding: 1rem 1rem 1.25rem;
+    margin: 0 auto 16px;   /* центрируем, без лишних 10px */
+  }
+}
+

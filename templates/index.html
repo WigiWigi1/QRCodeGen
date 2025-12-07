@@ -97,6 +97,7 @@
     <a href="/contact" class="{{ 'active' if active=='contact' else '' }}">Contact</a>
   </nav>
 
+  <div class="home-container">
   <div class="card" id="card">
     <div class="columns" id="cols">
       <div class="generator">
@@ -194,8 +195,9 @@
               <input id="icon-file" type="file" accept="image/png" hidden>
             </div>
           </div>
-          <div id="icon-upload-status" class="uploader-status"></div>
-        </div>
+          <div id="icon-status" class="uploader-status">No icon selected</div>
+            <button type="button" id="clear-icon-btn" style="margin-top:8px;display:none;">Remove icon</button>
+          </div>
         {% endif %}
 
         <div class="size">
@@ -258,13 +260,14 @@
         </div>
     </div>
   </div>
+  </div>
   <div id="customColorModal" class="modal-backdrop" style="display:none;">
     <div class="modal-content">
         <h4>🎨 Custom Color Selector</h4>
 
         <div class="color-picker-row">
             <div class="color-picker-column">
-                <label for="fillColorPicker">QR Color</label>
+                <label for="fillHexValue">QR Color</label>
                 <div id="fillColorContainer" class="picker-container"></div>
                 <div class="hex-input-wrapper">
                     <span id="fillColorSwatch" class="color-swatch-indicator"></span>
@@ -273,7 +276,7 @@
             </div>
 
             <div class="color-picker-column">
-                <label for="backColorPicker">Background Color</label>
+                <label for="backHexValue">Background Color</label>
                 <div id="backColorContainer" class="picker-container"></div>
                 <div class="hex-input-wrapper">
                     <span id="backColorSwatch" class="color-swatch-indicator"></span>
@@ -305,6 +308,10 @@
     const modal = document.getElementById('customColorModal');
     const applyBtn = document.getElementById('applyCustomColors');
     const closeBtn = document.getElementById('closeCustomColors');
+    // Элементы для статуса и кнопки очистки иконки
+    const iconStatus = document.getElementById('icon-status');
+    const clearIconBtn = document.getElementById('clear-icon-btn');
+
     // ---
 
     function setColors(fill, back) {
@@ -614,32 +621,50 @@
     const ptxt = document.getElementById('plain-text'); if (ptxt) ptxt.addEventListener('input', debounceGenerate);
     const dyn  = document.getElementById('dyn-url'); if (dyn) dyn.addEventListener('input', debounceGenerate);
 
-    // Custom icon upload (Ваша логика для загрузки иконок)
+    // Custom icon upload + возможность очистить иконку
     (function(){
-      const drop = document.getElementById('icon-drop');
-      const input = document.getElementById('icon-file');
-      const status = document.getElementById('icon-upload-status');
-      if (!drop || !input) return;
+      const drop   = document.getElementById('icon-drop');
+      const input  = document.getElementById('icon-file');
+      const status = iconStatus;
+      const clearBtn = clearIconBtn;
+
+      if (!drop || !input || !status) return;
 
       const titleEl = drop.querySelector('.uploader-title');
       const subEl   = drop.querySelector('.uploader-sub');
-      const linkEl  = drop.querySelector('.uploader-link');
 
-      function setStatus(msg, ok=true){
+      function setStatus(msg, ok = true){
         status.style.color = ok ? '#6b7280' : '#b91c1c';
         status.textContent = msg || '';
       }
 
-      linkEl.addEventListener('click', (e)=>{
-        e.preventDefault(); e.stopPropagation(); input.click();
-      });
+      // начальное состояние
+      setStatus('No icon selected', true);
+      if (clearBtn) clearBtn.style.display = 'none';
+
+      function rebindLink(){
+        const l = drop.querySelector('.uploader-link');
+        if (!l) return;
+        l.addEventListener('click', (e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          input.click();
+        });
+      }
+
+      rebindLink();
+
       drop.addEventListener('click', (e)=>{
         if (e.target.closest('.uploader-link')) return;
         if (e.target.closest('.uploader-inner')) input.click();
       });
 
-      ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,(e)=>{e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover');}));
-      ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,(e)=>{e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover');}));
+      ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,(e)=>{
+        e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover');
+      }));
+      ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,(e)=>{
+        e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover');
+      }));
       drop.addEventListener('drop', (e)=>{
         const file = e.dataTransfer.files && e.dataTransfer.files[0];
         if (file) handleFile(file);
@@ -659,16 +684,21 @@
         try {
           const res  = await fetch('/upload_icon', { method:'POST', body: fd });
           const data = await res.json();
-          if (!res.ok) { setStatus((data && data.error) ? data.error : 'Upload failed', false); return; }
+          if (!res.ok || !data.ok) {
+            setStatus((data && data.error) ? data.error : 'Upload failed', false);
+            return;
+          }
 
           drop.classList.add('has-file');
           drop.setAttribute('aria-label', 'Selected: ' + (file.name || 'icon.png'));
           titleEl.textContent = file.name || 'icon.png';
           subEl.innerHTML = 'Click to <span class="uploader-link">change file</span> (≤ 512 KB)';
-          const newLink = drop.querySelector('.uploader-link');
-          newLink.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); input.click(); });
 
-          setStatus('Icon uploaded');
+          rebindLink();
+
+          setStatus('Icon uploaded', true);
+          if (clearBtn) clearBtn.style.display = 'inline-flex';
+
           if (hasGenerated) {
             clearTimeout(typingTimer);
             typingTimer = setTimeout(()=>generateQR(), 250);
@@ -677,7 +707,44 @@
           setStatus('Upload error', false);
         }
       }
+
+      // Очистка выбранной иконки — запрос на /clear_icon
+      async function clearIcon(){
+        try {
+          const resp = await fetch('/clear_icon', { method: 'POST' });
+          const data = await resp.json();
+          if (!resp.ok || !data.ok) {
+            alert(data.error || 'Failed to clear icon');
+            return;
+          }
+
+          drop.classList.remove('has-file');
+          drop.setAttribute('aria-label', 'Upload PNG icon');
+          titleEl.textContent = 'Drag & drop PNG here';
+          subEl.innerHTML = 'or <span class="uploader-link">choose a file</span> (≤ 512 KB)';
+          input.value = '';
+          setStatus('No icon selected', true);
+          if (clearBtn) clearBtn.style.display = 'none';
+
+          rebindLink();
+
+          if (hasGenerated) {
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(()=>generateQR(), 250);
+          }
+        } catch (e) {
+          alert('Failed to clear icon');
+        }
+      }
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', (e)=>{
+          e.preventDefault();
+          clearIcon();
+        });
+      }
     })();
+
 
 
     // Init
