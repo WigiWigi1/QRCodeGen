@@ -6,6 +6,7 @@ from io import BytesIO
 from datetime import datetime
 from urllib.parse import urlparse
 import stripe
+from flask import abort
 
 from flask import (
     Flask, render_template, request, jsonify, send_file,
@@ -36,6 +37,9 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 DATA_DIR = os.environ.get("DATA_DIR", os.path.join(os.getcwd(), "data"))
 os.makedirs(DATA_DIR, exist_ok=True)
 
+DYNAMIC_QR_DIR = os.path.join(DATA_DIR, "dynamic_qr")
+os.makedirs(DYNAMIC_QR_DIR, exist_ok=True)
+
 # --- КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ (SQLite) ---
 DB_PATH = os.path.join(DATA_DIR, "site.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
@@ -43,10 +47,40 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 # ----------------------------------------
 
+DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
+
 DYN_PATH = os.environ.get("DYN_PATH", os.path.join(DATA_DIR, "dynamic.json"))
 if not os.path.exists(DYN_PATH):
     with open(DYN_PATH, "w", encoding="utf-8") as f:
         json.dump({}, f)
+
+def _create_dynamic_entry(target_url: str) -> tuple[str, str]:
+    """
+    Создаёт запись для Dynamic QR в DYN_PATH и возвращает (id, short_url).
+    """
+    id_ = uuid.uuid4().hex[:8]
+
+    # читаем существующий JSON (или создаём новый)
+    with open(DYN_PATH, "r+", encoding="utf-8") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            data = {}
+
+        data[id_] = {
+            "url": target_url,
+            "created": datetime.utcnow().isoformat()
+        }
+
+        f.seek(0)
+        json.dump(data, f)
+        f.truncate()
+
+    # короткая ссылка вида https://colorqr.app/r/abcd1234
+    short = url_for("dynamic_redirect", id=id_, _external=True)
+    return id_, short
+
+
 
 # Google OAuth (no passwords stored)
 oauth = OAuth(app)
@@ -79,8 +113,64 @@ class UserStatus(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     has_one_time_access = db.Column(db.Boolean, default=False, nullable=False)
 
+    is_sub_pro = db.Column(db.Boolean, default=False, nullable=False)
+    stripe_customer_id = db.Column(db.String(120), nullable=True)
+    stripe_subscription_id = db.Column(db.String(120), nullable=True)
+    subscription_status = db.Column(db.String(50), nullable=True)  # 'active', 'canceled', etc.
+
     def __repr__(self):
         return f"<UserStatus {self.email}: {'Paid' if self.has_one_time_access else 'Free'}>"
+
+
+class DynamicLink(db.Model):
+    """
+    Dynamic QR: хранит соответствие короткого id -> target_url + владелец.
+    """
+    id = db.Column(db.String(16), primary_key=True)          # короткий ID (например, 8 символов)
+    owner_email = db.Column(db.String(120), index=True)      # владелец (Pro-пользователь)
+    target_url = db.Column(db.String(1024), nullable=False)  # конечный URL
+    label = db.Column(db.String(255))                        # подпись/название (опционально)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<DynamicLink {self.id} -> {self.target_url}>"
+
+
+def _create_dynamic_link_in_db(target_url: str, label: str | None = None) -> tuple[str, str]:
+    """
+    Создаёт запись DynamicLink в БД и возвращает (id, short_url).
+    """
+    # владелец (если залогинен)
+    u = current_user()
+    owner_email = (u or {}).get("email")
+    if owner_email:
+        owner_email = owner_email.lower()
+    else:
+        owner_email = None
+
+    # генерируем короткий id и убеждаемся, что он уникален в БД
+    id_ = None
+    for _ in range(5):
+        candidate = uuid.uuid4().hex[:8]
+        if db.session.get(DynamicLink, candidate) is None:
+            id_ = candidate
+            break
+    if not id_:
+        # можно кинуть исключение, чтобы поймать выше
+        raise RuntimeError("Could not generate unique id")
+
+    link = DynamicLink(
+        id=id_,
+        owner_email=owner_email,
+        target_url=target_url,
+        label=label,
+    )
+    db.session.add(link)
+    db.session.commit()
+
+    short = url_for("dynamic_redirect", id=id_, _external=True)
+    return id_, short
 
 
 # ---------------------- HELPERS ----------------------
@@ -105,21 +195,28 @@ def get_or_create_user(email: str):
 
 
 def is_pro() -> bool:
-    """
-    Pro-доступ:
-    - реальный Pro по списку PREMIUM_EMAILS
-    - либо dev-флаг в сессии (unlock-pro)
-    """
     u = current_user()
     email = (u or {}).get("email", "").lower()
 
+    # 1) Admin / ручной Pro
     if email and email in PREMIUM_EMAILS:
         return True
 
+    # 2) Pro через подписку или one-time в базе
+    if email:
+        user_status = db.session.execute(
+            db.select(UserStatus).filter_by(email=email)
+        ).scalar_one_or_none()
+        if user_status:
+            if user_status.is_sub_pro and user_status.subscription_status == "active":
+                return True
+
+    # 3) Dev-режим
     if session.get("pro_debug"):
         return True
 
     return False
+
 
 
 def is_one_time() -> bool:
@@ -519,6 +616,10 @@ FAQS = [
     {"q": "Will a center icon affect scanning?",
      "a": "We use safe sizes and H error correction. Always test before print."},
     {"q": "Can I change colors?", "a": "Free includes 4 palettes. Paid unlocks 16 extra palettes and custom color."},
+    {"q": "What is a Dynamic QR code?",
+     "a": "A Dynamic QR contains a short redirect link instead of a fixed URL. The QR image never changes, but you can edit its destination anytime — even after printing or sharing it."},
+    {"q": "What is an SVG export and why do I need it?",
+     "a": "SVG is a vector format, which means your QR code stays perfectly sharp at any size — whether it's a tiny label or a large poster. Unlike JPG or PNG, SVG never loses quality and is ideal for high-resolution printing, graphic design and professional branding."}
 ]
 
 
@@ -669,6 +770,37 @@ def create_checkout_session():
         return jsonify({"error": str(e)}), 400
 
 
+@app.route("/create-subscription-session", methods=["POST"])
+def create_subscription_session():
+    # Для подписки Pro пользователь логически должен быть залогинен
+    user_email = session.get("user", {}).get("email")
+    if not user_email:
+        # можно редиректить на логин, но здесь вернём 401 и на фронте открыть /login
+        return jsonify({"error": "Auth required"}), 401
+
+    price_id = os.environ.get("STRIPE_PRO_MONTHLY_PRICE_ID")
+    if not price_id:
+        return jsonify({"error": "Missing STRIPE_PRO_MONTHLY_PRICE_ID"}), 500
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            mode="subscription",
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=url_for("payment_success", _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=url_for("pricing", _external=True),
+            customer_email=user_email,
+            metadata={
+                "user_email": user_email
+            }
+        )
+        return jsonify({"sessionId": checkout_session.id, "url": checkout_session.url})
+    except Exception as e:
+        app.logger.error(f"Stripe subscription session creation failed: {e}")
+        return jsonify({"error": str(e)}), 400
+
+
+
 # Stripe Payment success
 @app.route("/payment-success")
 def payment_success():
@@ -681,32 +813,143 @@ def payment_success():
         return redirect(url_for("pricing", error="Configuration Error"))
 
     try:
-        stripe_session = stripe.checkout.Session.retrieve(session_id)
+        stripe_session = stripe.checkout.Session.retrieve(session_id, expand=["subscription"])
 
-        if stripe_session.payment_status == "paid":
+        # общий email
+        user_email = stripe_session.get("customer_email")
+        if not user_email and session.get("user"):
+            user_email = session["user"].get("email")
 
-            session["one_time"] = True
+        # One-time режим (как было)
+        if stripe_session.mode == "payment":
+            if stripe_session.payment_status == "paid":
+                session["one_time"] = True
+                if user_email:
+                    user_status = get_or_create_user(user_email)
+                    user_status.has_one_time_access = True
+                    db.session.commit()
+                    flash(f"One-Time Access successfully linked to {user_email}. Access is now permanent for this account.")
+                else:
+                    flash("One-Time Access activated for this session. Please log in to permanently link access to your Google account.")
+                return render_template("payment_success.html", **tpl_args("pricing"))
+            else:
+                return redirect(url_for("pricing", error="Payment not successful"))
 
-            user_email = stripe_session.get("customer_email")
-            if not user_email and session.get("user"):
-                user_email = session["user"].get("email")
-
+        # НОВОЕ: режим subscription
+        if stripe_session.mode == "subscription":
+            subscription = stripe_session.subscription  # уже expanded
             if user_email:
                 user_status = get_or_create_user(user_email)
-                user_status.has_one_time_access = True
+                user_status.is_sub_pro = True
+                user_status.subscription_status = getattr(subscription, "status", "active")
+                user_status.stripe_customer_id = stripe_session.customer
+                user_status.stripe_subscription_id = subscription.id
                 db.session.commit()
-                flash(f"One-Time Access successfully linked to {user_email}. Access is now permanent for this account.")
-            else:
-                flash(
-                    "One-Time Access activated for this session. Please log in to permanently link access to your Google account.")
 
+            flash("Your ColorQR Pro subscription is active. Welcome!")
             return render_template("payment_success.html", **tpl_args("pricing"))
-        else:
-            return redirect(url_for("pricing", error="Payment not successful"))
+
+        # fallback
+        return redirect(url_for("pricing"))
 
     except Exception as e:
         app.logger.error(f"Stripe session retrieval failed: {e}")
         return redirect(url_for("pricing", error="Verification failed"))
+
+@app.route("/stripe/webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+
+    if not webhook_secret:
+        app.logger.error("STRIPE_WEBHOOK_SECRET not set")
+        return "", 400
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=sig_header,
+            secret=webhook_secret
+        )
+    except ValueError as e:
+        # Invalid payload
+        app.logger.error(f"Webhook payload error: {e}")
+        return "", 400
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        app.logger.error(f"Webhook signature error: {e}")
+        return "", 400
+
+    # Обрабатываем интересующие события
+    event_type = event["type"]
+    data = event["data"]["object"]
+
+    # 1) Подписка создана / обновлена
+    if event_type in ("customer.subscription.created", "customer.subscription.updated"):
+        sub = data
+        customer_id = sub["customer"]
+        status = sub["status"]  # trialing, active, past_due, canceled, etc.
+
+        user = db.session.execute(
+            db.select(UserStatus).filter_by(stripe_customer_id=customer_id)
+        ).scalar_one_or_none()
+
+        if user:
+            user.subscription_status = status
+            user.is_sub_pro = status in ("trialing", "active")
+            user.stripe_subscription_id = sub["id"]
+            db.session.commit()
+
+    # 2) Подписка отменена
+    if event_type == "customer.subscription.deleted":
+        sub = data
+        customer_id = sub["customer"]
+
+        user = db.session.execute(
+            db.select(UserStatus).filter_by(stripe_customer_id=customer_id)
+        ).scalar_one_or_none()
+
+        if user:
+            user.subscription_status = "canceled"
+            user.is_sub_pro = False
+            db.session.commit()
+
+    return "", 200
+
+
+@app.route("/billing-portal")
+def billing_portal():
+    """
+    Отправляем пользователя в Stripe Customer Portal, где он может
+    отменить подписку, поменять карту и т.п.
+    """
+    u = current_user()
+    if not u or not u.get("email"):
+        # Если не залогинен — логиним и возвращаемся на pricing
+        return redirect(url_for("login", next=url_for("pricing")))
+
+    email = u["email"].lower()
+    user_status = db.session.execute(
+        db.select(UserStatus).filter_by(email=email)
+    ).scalar_one_or_none()
+
+    if not user_status or not user_status.stripe_customer_id:
+        # Нет привязки к Stripe customer → показываем сообщение
+        flash("We could not find a Stripe customer for your account. Please contact support.")
+        return redirect(url_for("pricing"))
+
+    try:
+        portal_session = stripe.billing_portal.Session.create(
+            customer=user_status.stripe_customer_id,
+            return_url=url_for("pricing", _external=True),
+        )
+        return redirect(portal_session.url)
+    except Exception as e:
+        app.logger.error(f"Stripe billing portal session creation failed: {e}")
+        flash("Could not open billing portal. Please try again or contact support.")
+        return redirect(url_for("pricing"))
+
 
 
 @app.route("/logout")
@@ -714,32 +957,32 @@ def logout():
     session.clear()
     return redirect(url_for("home"))
 
-
-# One-time demo toggle
-@app.route("/unlock-one-time")
-def unlock_one_time():
-    session["one_time"] = True
-    return redirect(url_for("pricing"))
-
-
-@app.route("/lock-one-time")
-def lock_one_time():
-    session.pop("one_time", None)
-    return redirect(url_for("pricing"))
+if DEBUG_MODE:
+    # One-time demo toggle
+    @app.route("/unlock-one-time")
+    def unlock_one_time():
+        session["one_time"] = True
+        return redirect(url_for("pricing"))
 
 
-@app.route("/unlock-pro")
-def unlock_pro():
-    """Включить Pro в текущей сессии (dev-режим)."""
-    session["pro_debug"] = True
-    return redirect(url_for("pricing"))
+    @app.route("/lock-one-time")
+    def lock_one_time():
+        session.pop("one_time", None)
+        return redirect(url_for("pricing"))
 
 
-@app.route("/lock-pro")
-def lock_pro():
-    """Выключить dev-Pro в текущей сессии."""
-    session.pop("pro_debug", None)
-    return redirect(url_for("pricing"))
+    @app.route("/unlock-pro")
+    def unlock_pro():
+        """Включить Pro в текущей сессии (dev-режим)."""
+        session["pro_debug"] = True
+        return redirect(url_for("pricing"))
+
+
+    @app.route("/lock-pro")
+    def lock_pro():
+        """Выключить dev-Pro в текущей сессии."""
+        session.pop("pro_debug", None)
+        return redirect(url_for("pricing"))
 
 
 @app.route("/api/check_contrast", methods=["POST"])
@@ -809,29 +1052,128 @@ def clear_icon():
 def dynamic_create():
     if not is_pro():
         return jsonify({"error": "Pro required"}), 403
+
     payload = request.get_json(force=True, silent=True) or {}
     target = normalize_url(payload.get("target") or "")
+    label = (payload.get("label") or "").strip() or None
+
     if not target:
         return jsonify({"error": "Target URL required"}), 400
-    id_ = uuid.uuid4().hex[:8]
-    with open(DYN_PATH, "r+", encoding="utf-8") as f:
-        data = json.load(f)
-        data[id_] = {"url": target, "created": datetime.utcnow().isoformat()}
-        f.seek(0)
-        json.dump(data, f)
-        f.truncate()
-    short = url_for("dynamic_redirect", id=id_, _external=True)
+
+    try:
+        id_, short = _create_dynamic_link_in_db(target, label)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+
     return jsonify({"id": id_, "short": short})
 
 
 @app.route("/r/<id>")
 def dynamic_redirect(id):
-    with open(DYN_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    item = data.get(id)
-    if not item:
-        return redirect("https://colorqr.app/")
-    return redirect(item["url"])
+    # 1. Сначала пробуем найти в БД (новый формат)
+    link = db.session.get(DynamicLink, id)
+    if link and link.target_url:
+        return redirect(link.target_url)
+
+    # 2. Fallback: старые динамические коды из JSON-файла
+    try:
+        with open(DYN_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        item = data.get(id)
+        if item and "url" in item:
+            return redirect(item["url"])
+    except Exception:
+        pass
+
+    # 3. Если ничего не нашли — ведём просто на главную
+    return redirect("https://colorqr.app/")
+
+
+@app.route("/dynamic/manage")
+def dynamic_manage():
+    # Только для Pro
+    if not is_pro():
+        return redirect(url_for("pricing"))
+
+    u = current_user()
+    if not u or not u.get("email"):
+        # если почему-то нет логина — отправляем логиниться
+        return redirect(url_for("login", next=url_for("dynamic_manage")))
+
+    email = u["email"].lower()
+
+    links = db.session.execute(
+        db.select(DynamicLink)
+          .filter_by(owner_email=email)
+          .order_by(DynamicLink.created_at.desc())
+    ).scalars().all()
+
+    # active='dynamic' — просто для подсветки/состояния, в меню пока не отображается
+    return render_template(
+        "dynamic_manage.html",
+        **tpl_args("dynamic"),
+        links=links
+    )
+
+
+@app.route("/dynamic/update/<id>", methods=["POST"])
+def dynamic_update(id):
+    if not is_pro():
+        return jsonify({"error": "Pro required"}), 403
+
+    u = current_user()
+    if not u or not u.get("email"):
+        return jsonify({"error": "Auth required"}), 401
+
+    email = u["email"].lower()
+
+    link = db.session.get(DynamicLink, id)
+    # владелец может править только свои ссылки,
+    # а "админ" из PREMIUM_EMAILS может править все
+    if not link:
+        return jsonify({"error": "Not found"}), 404
+    if link.owner_email and link.owner_email != email and email not in PREMIUM_EMAILS:
+        return jsonify({"error": "Not allowed"}), 403
+
+    payload = request.get_json(force=True, silent=True) or {}
+    target = normalize_url(payload.get("target_url") or "")
+    if not target:
+        return jsonify({"error": "Target URL required"}), 400
+    label = (payload.get("label") or "").strip() or None
+
+    link.target_url = target
+    link.label = label
+    db.session.commit()
+
+    return jsonify({"ok": True})
+
+@app.route("/dynamic/delete/<id>", methods=["POST"])
+def dynamic_delete(id):
+    if not is_pro():
+        return jsonify({"error": "Pro required"}), 403
+
+    u = current_user()
+    if not u or not u.get("email"):
+        return jsonify({"error": "Auth required"}), 401
+
+    email = u["email"].lower()
+
+    link = db.session.get(DynamicLink, id)
+    if not link:
+        return jsonify({"error": "Not found"}), 404
+
+    # владелец может удалять только свои ссылки,
+    # PREMIUM_EMAILS — админ, может удалять всё
+    if link.owner_email and link.owner_email != email and email not in PREMIUM_EMAILS:
+        return jsonify({"error": "Not allowed"}), 403
+
+    db.session.delete(link)
+    db.session.commit()
+
+    # ВАЖНО: сам файл dynamic_qr/<id>.jpg не трогаем,
+    # чтобы у юзера оставалась физическая картинка, если он её где-то использует.
+    return jsonify({"ok": True})
+
 
 
 # ---------------------- QR GENERATION ----------------------
@@ -840,6 +1182,9 @@ def generate_qr():
     payload = request.get_json(force=True, silent=True) or {}
     data_type = (payload.get("data_type") or "url").lower()  # url | wifi | text | vcard | dynamic
     raw = (payload.get("data") or "").strip()
+    dynamic_id = None
+    dynamic_short = None
+
 
     if data_type == "vcard" and not is_pro():
         return jsonify({"error": "vCard available in Pro"}), 403
@@ -849,8 +1194,25 @@ def generate_qr():
     if not raw:
         return jsonify({"error": "Data is required"}), 400
 
-    if data_type in ("url", "dynamic"):
+    if data_type == "url":
         raw = normalize_url(raw)
+
+
+
+    elif data_type == "dynamic":
+        # raw здесь — целевой URL, который хочет пользователь
+        target = normalize_url(raw)
+        if not target:
+            return jsonify({"error": "Target URL required"}), 400
+        try:
+            # создаём запись в БД и короткую ссылку /r/<id>
+            dynamic_id, dynamic_short = _create_dynamic_link_in_db(target, label=None)
+        except RuntimeError as e:
+            return jsonify({"error": str(e)}), 500
+        # в сам QR зашиваем именно короткую ссылку
+        raw = dynamic_short
+    # wifi/text/vcard — оставляем raw как есть
+
 
     fill_color = payload.get("fill_color", "#000000")
     back_color = payload.get("back_color", "#ffffff")
@@ -905,6 +1267,8 @@ def generate_qr():
         )
 
     uid = str(uuid.uuid4())
+
+    # --- JPG ---
     jpg_bytes = _save_jpg_from_rgba(
         img,
         quality=(95 if is_one_time() or is_pro() else 88)
@@ -913,7 +1277,9 @@ def generate_qr():
     with open(jpg_path, "wb") as f:
         f.write(jpg_bytes)
 
+    # --- SVG (общий, для download_svg) ---
     svg_available = False
+    svg_bytes = None
     if is_pro():
         try:
             svg_bytes = _gen_svg_bytes(raw, fill_color, back_color)
@@ -923,7 +1289,26 @@ def generate_qr():
             svg_available = True
         except Exception as e:
             app.logger.error(f"SVG generation failed: {e}")
+            svg_bytes = None
+            svg_available = False
 
+    # --- ПЕРСИСТЕНТНЫЕ ФАЙЛЫ ДЛЯ DYNAMIC QR ---
+    if data_type == "dynamic" and dynamic_id:
+        try:
+            # JPG под id динамической ссылки
+            dyn_jpg_path = os.path.join(DYNAMIC_QR_DIR, f"{dynamic_id}.jpg")
+            with open(dyn_jpg_path, "wb") as f_dyn_jpg:
+                f_dyn_jpg.write(jpg_bytes)
+
+            # SVG под id динамической ссылки
+            if svg_bytes is not None:
+                dyn_svg_path = os.path.join(DYNAMIC_QR_DIR, f"{dynamic_id}.svg")
+                with open(dyn_svg_path, "wb") as f_dyn_svg:
+                    f_dyn_svg.write(svg_bytes)
+        except Exception as e:
+            app.logger.error(f"Failed to persist dynamic QR files for {dynamic_id}: {e}")
+
+    # --- ответ клиенту ---
     b64 = base64.b64encode(jpg_bytes).decode("utf-8")
 
     download_name = _build_download_name(data_type, raw)
@@ -932,7 +1317,9 @@ def generate_qr():
     return jsonify({
         "qr_code": b64,
         "id": uid,
-        "svg_available": svg_available
+        "svg_available": svg_available,
+        "dynamic_id": dynamic_id,
+        "dynamic_short": dynamic_short,
     })
 
 
@@ -955,6 +1342,38 @@ def download_jpg():
         download_name=f"{download_name}.jpg",
         mimetype="image/jpeg"
     )
+
+@app.route("/dynamic/qr/<id>.jpg")
+def dynamic_qr_image(id):
+    """
+    Постоянная картинка JPG для динамического кода (по его id).
+    Открывается в браузере.
+    """
+    path = os.path.join(DYNAMIC_QR_DIR, f"{id}.jpg")
+    if not os.path.exists(path):
+        return "Not found", 404
+    return send_file(path, mimetype="image/jpeg")
+
+
+@app.route("/dynamic/qr/<id>.svg")
+def dynamic_qr_svg(id):
+    """
+    SVG для динамического кода (Pro).
+    """
+    if not is_pro():
+        return "Pro required", 403
+
+    path = os.path.join(DYNAMIC_QR_DIR, f"{id}.svg")
+    if not os.path.exists(path):
+        return "Not found", 404
+
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=f"dynamic-{id}.svg",
+        mimetype="image/svg+xml"
+    )
+
 
 
 

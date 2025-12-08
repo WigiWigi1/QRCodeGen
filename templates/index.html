@@ -169,15 +169,24 @@
         {% endif %}
 
         {% if show_dynamic %}
-        <div id="form-dynamic" class="form-section" hidden>
-          <label for="dyn-url">Target URL</label>
-          <input id="dyn-url" type="text" placeholder="https://destination.com/page">
-          <div id="err-dyn" class="error">Please enter a URL</div>
-          <div class="note-lock" style="margin-top:.25rem;color:#6b7280;">
-            You can update the target anytime in your dashboard (coming soon).
-          </div>
-        </div>
+            <div id="form-dynamic" class="form-section" hidden>
+              <label for="dyn-url">Target URL</label>
+              <input id="dyn-url" type="text" placeholder="https://destination.com/page">
+              <div id="err-dyn" class="error">Please enter a URL</div>
+
+              <div class="note-lock" style="margin-top:.25rem;color:#6b7280;">
+                You can update the target anytime in your Dynamic QR dashboard.
+                {% if is_pro %}
+                  <br>
+                  <a href="/dynamic/manage"
+                     class="dynamic-manage-link">
+                    Open Dynamic QR dashboard
+                  </a>
+                {% endif %}
+              </div>
+            </div>
         {% endif %}
+
 
         {% if is_pro %}
         <div id="custom-icon-uploader" class="form-section" hidden>
@@ -249,6 +258,15 @@
           {% if is_pro %}
           <a id="dl-svg" href="#" download>SVG</a>
           {% endif %}
+        </div>
+        <div id="dyn-info"
+             style="display:none;margin-top:.6rem;font-size:.9rem;text-align:center;color:#374151;">
+          Dynamic QR link:&nbsp;
+          <a id="dyn-short-link"
+             href="#"
+             target="_blank"
+             rel="noopener"
+             style="color:#2563eb;word-break:break-all;"></a>
         </div>
       </div>
     </div>
@@ -457,10 +475,24 @@
         const svg = document.getElementById('dl-svg');
         if (svg) svg.href = `/download_svg?id=${data.id}`;
         downloads.style.display = 'flex';
+
+        // --- Dynamic info ---
+        const dynInfo = document.getElementById('dyn-info');
+        const dynLink = document.getElementById('dyn-short-link');
+        if (dynInfo && dynLink && data.dynamic_short) {
+          dynInfo.style.display = 'block';
+          dynLink.textContent = data.dynamic_short;
+          dynLink.href = data.dynamic_short;
+        } else if (dynInfo) {
+          dynInfo.style.display = 'none';
+        }
       } else {
         downloads.style.display = 'none';
+        const dynInfo = document.getElementById('dyn-info');
+        if (dynInfo) dynInfo.style.display = 'none';
         result.innerHTML = `<p style="color:red">${data.error || 'Error'}</p>`;
       }
+
     }
 
     function debounceGenerate(){
