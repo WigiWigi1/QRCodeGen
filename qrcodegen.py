@@ -447,42 +447,55 @@ def _add_watermark_border(
     W, H = img.size
     side = min(W, H)
 
+    # отступы вокруг QR
     m = max(int(side * margin_scale), 24)
 
+    # фон берём из back_hex, чтобы на цветных фонах всё было консистентно
     back_rgb = _hex_to_rgb(back_hex)
     frame = Image.new("RGBA", (W + 2 * m, H + 2 * m), (*back_rgb, 255))
     frame.alpha_composite(img, (m, m))
 
+    # размер шрифта для нормального TTF
     fpx = max(int(side * float(font_scale)), 22)
 
     font = _load_ttf(fpx)
     fallback = False
     if font is None:
+        # если нормального TTF нет — используем встроенный bitmap-шрифт
         fallback = True
         font = ImageFont.load_default()
 
     def lum(rgb):
-        r, g, b = [c / 255.0 for c in rgb]; return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        r, g, b = [c / 255.0 for c in rgb]
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
     text_col = (30, 30, 30, 240) if lum(back_rgb) > 0.6 else (245, 245, 245, 240)
     stroke_col = (255, 255, 255, 210) if lum(back_rgb) <= 0.6 else (0, 0, 0, 210)
-    stroke_w = max(1, (fpx // 14) if not fallback else (fpx // 10))
+
+    # важный момент: при fallback обводку делаем тонкой, чтобы не замыливать мелкий шрифт
+    stroke_w = max(1, (fpx // 14) if not fallback else 1)
 
     def make_block(rot=0):
+        # считаем ширину текста
         dtmp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
         tw = int(dtmp.textlength(text, font=font))
         th = int((getattr(font, "size", 12)) * 1.2)
 
         blk = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
         d2 = ImageDraw.Draw(blk)
-        d2.text((tw // 2, th // 2), text, font=font, anchor="mm",
-                fill=text_col, stroke_width=stroke_w, stroke_fill=stroke_col)
+        d2.text(
+            (tw // 2, th // 2),
+            text,
+            font=font,
+            anchor="mm",
+            fill=text_col,
+            stroke_width=stroke_w,
+            stroke_fill=stroke_col,
+        )
 
-        if fallback:
-            target_h = int(fpx * 1.2)
-            target_w = max(1, int(blk.width * (target_h / max(1, blk.height))))
-            blk = blk.resize((target_w, target_h), Image.LANCZOS)
-
+        # 🔴 ГЛАВНОЕ ИЗМЕНЕНИЕ:
+        # больше НИКАКОГО ресайза bitmap-шрифта. Раньше тут был blk.resize(..., LANCZOS),
+        # который и превращал текст в кашу при fallback.
         if rot:
             blk = blk.rotate(rot, expand=True)
         return blk
@@ -515,12 +528,15 @@ def _add_watermark_border(
             y += block_v.height + gap_v
         frame.alpha_composite(strip, (x_left, 0))
 
+    # верх/низ
     tile_h(0)
     tile_h(H + m)
+    # левый/правый
     tile_v(0)
     tile_v(W + m)
 
     return frame
+
 
 
 def _save_jpg_from_rgba(pil_rgba: Image.Image, quality: int = 90) -> bytes:
@@ -1271,7 +1287,7 @@ def generate_qr():
     # --- JPG ---
     jpg_bytes = _save_jpg_from_rgba(
         img,
-        quality=(95 if is_one_time() or is_pro() else 88)
+        quality=(95 if is_one_time() or is_pro() else 92)
     )
     jpg_path = os.path.join(DATA_DIR, f"{uid}.jpg")
     with open(jpg_path, "wb") as f:
